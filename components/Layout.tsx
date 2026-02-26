@@ -79,7 +79,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, on
                 <button
                   onClick={() => setActiveView(item.id)}
                   className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                    activeView === item.id 
+                    activeView === item.id || (item.id === 'orders' && activeView === 'order-details')
                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' 
                       : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                   }`}
@@ -255,7 +255,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, on
             key={item.id}
             onClick={() => setActiveView(item.id)}
             className={`flex flex-col items-center justify-center gap-1 min-w-[64px] transition-colors ${
-              activeView === item.id ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
+              activeView === item.id || (item.id === 'orders' && activeView === 'order-details') ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
             }`}
           >
             <item.icon size={20} strokeWidth={activeView === item.id ? 2.5 : 2} />
