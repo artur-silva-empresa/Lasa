@@ -1,63 +1,53 @@
-
 <!DOCTYPE html>
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TexFlow">
     <meta name="description" content="TexFlow - Gestão e Acompanhamento de Encomendas Têxteis">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="./icons/favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16x16.png">
-    <!-- Apple / iOS -->
-    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
-    <!-- Windows Tile -->
-    <meta name="msapplication-TileImage" content="./icons/icon-144x144.png">
+
+    <!-- Favicon — paths absolutos para funcionar com base: '/Lasa/' -->
+    <link rel="icon" type="image/x-icon"  href="/Lasa/icons/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/Lasa/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/Lasa/icons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/Lasa/icons/apple-touch-icon.png">
+    <meta name="msapplication-TileImage" content="/Lasa/icons/icon-144x144.png">
     <meta name="msapplication-TileColor" content="#0f172a">
-    
+
     <title>TexFlow - Gestão de Encomendas</title>
-    <link rel="manifest" href="./manifest.json">
-    
+
+    <!-- manifest com path absoluto -->
+    <link rel="manifest" href="/Lasa/manifest.json">
+
     <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-            margin: 0;
-            padding: 0;
-            height: 100dvh;
-            width: 100vw;
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0; padding: 0;
+            height: 100dvh; width: 100vw;
             overflow: hidden;
             background-color: #f8fafc;
             -webkit-user-select: none;
             user-select: none;
             touch-action: manipulation;
         }
-        html.dark body {
-            background-color: #020617;
-            color: #f1f5f9;
-        }
-        #root {
-            height: 100%;
-            width: 100%;
-        }
+        html.dark body { background-color: #020617; color: #f1f5f9; }
+        #root { height: 100%; width: 100%; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .overflow-y-auto {
-            -webkit-overflow-scrolling: touch;
-        }
-        .safe-top { padding-top: env(safe-area-inset-top); }
+        .overflow-y-auto { -webkit-overflow-scrolling: touch; }
+        .safe-top    { padding-top:    env(safe-area-inset-top); }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300">
     <div id="root"></div>
+
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // ⚠️ Ajustar '/Lasa/' para o nome do repositório GitHub
                 navigator.serviceWorker.register('/Lasa/sw.js', { scope: '/Lasa/' })
                     .then(reg => {
                         console.log('TexFlow Service Worker registrado com sucesso.');
@@ -65,7 +55,7 @@
                             const newWorker = reg.installing;
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    if(confirm('Nova versão do TexFlow disponível! Recarregar agora?')) {
+                                    if (confirm('Nova versão do TexFlow disponível! Recarregar agora?')) {
                                         window.location.reload();
                                     }
                                 }
@@ -76,7 +66,8 @@
             });
         }
     </script>
-    <script type="module" src="./index.tsx"></script>
+
+    <!-- O Vite substitui esta linha pelo bundle compilado durante o build -->
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>
-
