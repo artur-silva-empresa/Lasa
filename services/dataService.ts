@@ -7,12 +7,13 @@ import { SECTORS } from '../constants';
 
 // --- PERSISTÊNCIA (IndexedDB) ---
 const DB_NAME = 'TexFlowData';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE_HANDLES = 'handles';
 const STORE_ORDERS = 'orders';
 const STORE_HEADERS = 'headers';
 const STORE_STOP_REASONS = 'stop_reasons';
 const STORE_USERS = 'users';
+const STORE_EXPORT_COLUMNS = 'export_columns';
 
 const initDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
@@ -34,6 +35,9 @@ const initDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORE_USERS)) {
         db.createObjectStore(STORE_USERS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_EXPORT_COLUMNS)) {
+        db.createObjectStore(STORE_EXPORT_COLUMNS);
       }
     };
     
@@ -245,10 +249,15 @@ export const verifyPermission = async (handle: any, readWrite: boolean = false) 
 };
 
 // --- CONFIGURAÇÃO SQL.JS ---
+// O ficheiro sql-wasm.wasm é copiado de node_modules para public/ pelo script prebuild
+// garantindo funcionamento 100% offline sem depender de CDNs externos
 const getSql = async () => {
   try {
+    // Usar import.meta.url para calcular o path base corretamente
+    // independentemente do base URL configurado no Vite (ex: /Lasa/ ou /)
+    const wasmUrl = new URL('/Lasa/sql-wasm.wasm', window.location.origin).href;
     return await initSqlJs({
-      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+      locateFile: () => wasmUrl
     });
   } catch (error) {
     console.error("Falha ao inicializar SQL.js:", error);
@@ -538,6 +547,9 @@ export const parseSQLiteFile = async (file: File): Promise<{ orders: Order[], he
             if (!obj.comercial) obj.comercial = '';
             // Garantir que isManual seja boolean
             obj.isManual = obj.isManual === 1 || obj.isManual === true || obj.isManual === '1';
+            // Garantir que isArchived seja boolean
+            obj.isArchived = obj.isArchived === 1 || obj.isArchived === true || obj.isArchived === '1';
+            if (obj.archivedAt) obj.archivedAt = new Date(obj.archivedAt);
             
             return obj as Order;
         });
@@ -570,18 +582,19 @@ export const exportOrdersToSQLite = async (orders: Order[], headers: Record<stri
       embAcabQty REAL, armExpDate INTEGER, stockCxQty REAL,
       dataEnt INTEGER, qtyBilled REAL, qtyOpen REAL,
       sectorObservations TEXT, sectorPredictedDates TEXT, priority INTEGER, isManual INTEGER, sectorStopReasons TEXT,
-      dataEspecial INTEGER, dataPrinter INTEGER, dataDebuxo INTEGER, dataAmostras INTEGER, dataBordados INTEGER
+      dataEspecial INTEGER, dataPrinter INTEGER, dataDebuxo INTEGER, dataAmostras INTEGER, dataBordados INTEGER,
+      isArchived INTEGER, archivedAt INTEGER, archivedBy TEXT
     );
   `;
   db.run(schema);
 
   db.run("BEGIN TRANSACTION");
-  // 42 colunas no total
+  // 45 colunas no total
   const stmt = db.prepare(`
     INSERT INTO orders VALUES (
       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-      ?, ?
+      ?, ?, ?, ?, ?
     )
   `);
 
@@ -607,7 +620,10 @@ export const exportOrdersToSQLite = async (orders: Order[], headers: Record<stri
         o.dataPrinter ? o.dataPrinter.getTime() : null,
         o.dataDebuxo ? o.dataDebuxo.getTime() : null,
         o.dataAmostras ? o.dataAmostras.getTime() : null,
-        o.dataBordados ? o.dataBordados.getTime() : null
+        o.dataBordados ? o.dataBordados.getTime() : null,
+        o.isArchived ? 1 : 0,
+        o.archivedAt ? o.archivedAt.getTime() : null,
+        o.archivedBy || null
       ]);
   });
   
@@ -651,115 +667,145 @@ export const exportOrdersToSQLite = async (orders: Order[], headers: Record<stri
 };
 
 // --- EXPORTAÇÃO PARA EXCEL ---
-export const exportOrdersToExcel = (orders: Order[], customFileName?: string) => {
-    const worksheetData = orders.map(order => {
-        // Flatten observations with readable headers
-        const obsColumns: Record<string, string> = {
-            'Obs. Tecelagem': order.sectorObservations?.['tecelagem'] || '',
-            'Obs. Felpo Cru': order.sectorObservations?.['felpo_cru'] || '',
-            'Obs. Tinturaria': order.sectorObservations?.['tinturaria'] || '',
-            'Obs. Confecção': order.sectorObservations?.['confeccao'] || '',
-            'Obs. Embalagem': order.sectorObservations?.['embalagem'] || '',
-            'Obs. Expedição': order.sectorObservations?.['expedicao'] || '',
-        };
+export const exportOrdersToExcel = (orders: Order[], headers: Record<string, string> = {}, customFileName?: string) => {
+    // Folha 1: Dados idênticos ao SQLite (para round-trip sem perda de informação)
+    const mainSheetData = orders.map(o => ({
+        // === IDENTIFICAÇÃO ===
+        'id': o.id,
+        'docNr': o.docNr,
+        'clientCode': o.clientCode,
+        'clientName': o.clientName,
+        'comercial': o.comercial,
+        'itemNr': o.itemNr,
+        'po': o.po,
+        // === ARTIGO ===
+        'articleCode': o.articleCode,
+        'reference': o.reference,
+        'colorCode': o.colorCode,
+        'colorDesc': o.colorDesc,
+        'size': o.size,
+        'family': o.family,
+        'sizeDesc': o.sizeDesc,
+        'ean': o.ean,
+        // === QUANTIDADES ===
+        'qtyRequested': o.qtyRequested,
+        'qtyBilled': o.qtyBilled,
+        'qtyOpen': o.qtyOpen,
+        // === DATAS PRINCIPAIS ===
+        'issueDate': o.issueDate ? formatDate(o.issueDate) : null,
+        'requestedDate': o.requestedDate ? formatDate(o.requestedDate) : null,
+        'dataEnt': o.dataEnt ? formatDate(o.dataEnt) : null,
+        'dataTec': o.dataTec ? formatDate(o.dataTec) : null,
+        'armExpDate': o.armExpDate ? formatDate(o.armExpDate) : null,
+        // === PRODUÇÃO - QUANTIDADES ===
+        'felpoCruQty': o.felpoCruQty,
+        'tinturariaQty': o.tinturariaQty,
+        'confRoupoesQty': o.confRoupoesQty,
+        'confFelposQty': o.confFelposQty,
+        'embAcabQty': o.embAcabQty,
+        'stockCxQty': o.stockCxQty,
+        // === PRODUÇÃO - DATAS ===
+        'felpoCruDate': o.felpoCruDate ? formatDate(o.felpoCruDate) : null,
+        'tinturariaDate': o.tinturariaDate ? formatDate(o.tinturariaDate) : null,
+        'confDate': o.confDate ? formatDate(o.confDate) : null,
+        // === DATAS ESPECIAIS ===
+        'dataEspecial': o.dataEspecial ? formatDate(o.dataEspecial) : null,
+        'dataPrinter': o.dataPrinter ? formatDate(o.dataPrinter) : null,
+        'dataDebuxo': o.dataDebuxo ? formatDate(o.dataDebuxo) : null,
+        'dataAmostras': o.dataAmostras ? formatDate(o.dataAmostras) : null,
+        'dataBordados': o.dataBordados ? formatDate(o.dataBordados) : null,
+        // === CAMPOS APLICAÇÃO ===
+        'priority': o.priority || 0,
+        'isManual': o.isManual ? 1 : 0,
+        'sectorObservations': JSON.stringify(o.sectorObservations || {}),
+        'sectorPredictedDates': JSON.stringify(o.sectorPredictedDates || {}),
+        'sectorStopReasons': JSON.stringify(o.sectorStopReasons || {}),
+        // === ARQUIVO ===
+        'isArchived': o.isArchived ? 1 : 0,
+        'archivedAt': o.archivedAt ? formatDate(o.archivedAt) : null,
+        'archivedBy': o.archivedBy || null,
+    }));
 
-        const predictedDateColumns: Record<string, string> = {
-            'Prev. Tecelagem': formatDate(order.sectorPredictedDates?.['tecelagem']),
-            'Prev. Felpo Cru': formatDate(order.sectorPredictedDates?.['felpo_cru']),
-            'Prev. Tinturaria': formatDate(order.sectorPredictedDates?.['tinturaria']),
-            'Prev. Confecção': formatDate(order.sectorPredictedDates?.['confeccao']),
-            'Prev. Embalagem': formatDate(order.sectorPredictedDates?.['embalagem']),
-            'Prev. Expedição': formatDate(order.sectorPredictedDates?.['expedicao']),
-        };
-
-        const stopReasonColumns: Record<string, string> = {
-            'Motivo Tecelagem': order.sectorStopReasons?.['tecelagem'] || '',
-            'Motivo Felpo Cru': order.sectorStopReasons?.['felpo_cru'] || '',
-            'Motivo Tinturaria': order.sectorStopReasons?.['tinturaria'] || '',
-            'Motivo Confecção': order.sectorStopReasons?.['confeccao'] || '',
-            'Motivo Embalagem': order.sectorStopReasons?.['embalagem'] || '',
-            'Motivo Expedição': order.sectorStopReasons?.['expedicao'] || '',
-        };
+    // Folha 2: Vista legível para humanos
+    const readableSheetData = orders.map(o => {
+        const obsColumns: Record<string, string> = {};
+        const predictedDateColumns: Record<string, string> = {};
+        const stopReasonColumns: Record<string, string> = {};
+        ['tecelagem', 'felpo_cru', 'tinturaria', 'confeccao', 'embalagem', 'expedicao'].forEach(s => {
+            const label = s === 'felpo_cru' ? 'Felpo Cru' : s === 'confeccao' ? 'Confecção' : s === 'expedicao' ? 'Expedição' : s.charAt(0).toUpperCase() + s.slice(1);
+            obsColumns[`Obs. ${label}`] = o.sectorObservations?.[s] || '';
+            predictedDateColumns[`Prev. ${label}`] = formatDate(o.sectorPredictedDates?.[s]);
+            stopReasonColumns[`Motivo ${label}`] = o.sectorStopReasons?.[s] || '';
+        });
 
         return {
-            'ID Interno': order.id,
-            'Nr. Documento': order.docNr,
-            'Item': order.itemNr,
-            'Prioridade': order.priority === 1 ? 'Alta' : order.priority === 2 ? 'Média' : order.priority === 3 ? 'Baixa' : '',
-            'Confecção Manual': order.isManual ? 'Sim' : 'Não',
-            'Estado': getOrderState(order),
-            
-            // Cliente
-            'Cód. Cliente': order.clientCode,
-            'Cliente': order.clientName,
-            'Comercial': order.comercial,
-            'PO': order.po,
-
-            // Artigo
-            'Artigo': order.articleCode,
-            'Referência': order.reference,
-            'Cód. Cor': order.colorCode,
-            'Cor': order.colorDesc,
-            'Tamanho': order.size,
-            'Desc. Tamanho': order.sizeDesc,
-            'Família': order.family,
-            'EAN': order.ean,
-
-            // Quantidades Principais
-            'Qtd. Pedida': order.qtyRequested,
-            'Qtd. Faturada': order.qtyBilled,
-            'Qtd. Em Aberto': order.qtyOpen,
-
-            // Datas Principais
-            'Data Emissão': formatDate(order.issueDate),
-            'Data Entrega Pedida': formatDate(order.requestedDate),
-            'Data Entrada': formatDate(order.dataEnt),
-            'Data Prev. Armazém': formatDate(order.armExpDate),
-
-            // Detalhes Produção (Quantidades)
-            'Qtd. Felpo Cru': order.felpoCruQty,
-            'Qtd. Tinturaria': order.tinturariaQty,
-            'Qtd. Conf. Roupões': order.confRoupoesQty,
-            'Qtd. Conf. Felpos': order.confFelposQty,
-            'Qtd. Embalagem': order.embAcabQty,
-            'Qtd. Stock Caixa': order.stockCxQty,
-
-            // Detalhes Produção (Datas)
-            'Data Tecelagem': formatDate(order.dataTec),
-            'Data Felpo Cru': formatDate(order.felpoCruDate),
-            'Data Tinturaria': formatDate(order.tinturariaDate),
-            'Data Confecção': formatDate(order.confDate),
-
-            // Datas Especiais
-            'Data Especial': formatDate(order.dataEspecial),
-            'Data Printer': formatDate(order.dataPrinter),
-            'Data Debuxo': formatDate(order.dataDebuxo),
-            'Data Amostras': formatDate(order.dataAmostras),
-            'Data Bordados': formatDate(order.dataBordados),
-
-            // Observações
+            'Nr. Documento': o.docNr,
+            'Item': o.itemNr,
+            'Estado': getOrderState(o),
+            'Arquivado': o.isArchived ? 'Sim' : 'Não',
+            'Arquivado Em': o.archivedAt ? formatDate(o.archivedAt) : '',
+            'Arquivado Por': o.archivedBy || '',
+            'Prioridade': o.priority === 1 ? 'Alta' : o.priority === 2 ? 'Média' : o.priority === 3 ? 'Baixa' : '',
+            'Conf. Manual': o.isManual ? 'Sim' : 'Não',
+            'Cód. Cliente': o.clientCode,
+            'Cliente': o.clientName,
+            'Comercial': o.comercial,
+            'PO': o.po,
+            'Artigo': o.articleCode,
+            'Referência': o.reference,
+            'Cód. Cor': o.colorCode,
+            'Cor': o.colorDesc,
+            'Tamanho': o.size,
+            'Desc. Tamanho': o.sizeDesc,
+            'Família': o.family,
+            'EAN': o.ean,
+            'Qtd. Pedida': o.qtyRequested,
+            'Qtd. Faturada': o.qtyBilled,
+            'Qtd. Em Aberto': o.qtyOpen,
+            'Data Emissão': formatDate(o.issueDate),
+            'Data Entrega Pedida': formatDate(o.requestedDate),
+            'Data Entrada': formatDate(o.dataEnt),
+            'Data Prev. Armazém': formatDate(o.armExpDate),
+            'Data Tecelagem': formatDate(o.dataTec),
+            'Qtd. Felpo Cru': o.felpoCruQty,
+            'Data Felpo Cru': formatDate(o.felpoCruDate),
+            'Qtd. Tinturaria': o.tinturariaQty,
+            'Data Tinturaria': formatDate(o.tinturariaDate),
+            'Qtd. Conf. Roupões': o.confRoupoesQty,
+            'Qtd. Conf. Felpos': o.confFelposQty,
+            'Data Confecção': formatDate(o.confDate),
+            'Qtd. Embalagem': o.embAcabQty,
+            'Qtd. Stock Caixa': o.stockCxQty,
+            'Data Especial': formatDate(o.dataEspecial),
+            'Data Printer': formatDate(o.dataPrinter),
+            'Data Debuxo': formatDate(o.dataDebuxo),
+            'Data Amostras': formatDate(o.dataAmostras),
+            'Data Bordados': formatDate(o.dataBordados),
             ...obsColumns,
-            
-            // Datas Previstas (Setor)
             ...predictedDateColumns,
-
-            // Motivos de Paragem (Setor)
-            ...stopReasonColumns
+            ...stopReasonColumns,
         };
     });
 
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-    
-    // Ajustar larguras das colunas de forma genérica para caber o conteúdo
-    const wscols = Array(Object.keys(worksheetData[0]).length).fill({ wch: 20 });
-    // Ajustes finos para colunas maiores
-    if (wscols.length > 5) wscols[5] = { wch: 30 }; // Cliente
-    worksheet['!cols'] = wscols;
+    // Folha 3: Headers mapeamento (equivalente à tabela headers do SQLite)
+    const headersSheetData = Object.entries(headers).map(([key, value]) => ({ Coluna: key, Cabeçalho: value }));
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Encomendas Completo");
-    
-    // Construct Default Filename with DD-MM-YYYY
+    const workbook = XLSX.utils.book_new();
+
+    const wsMain = XLSX.utils.json_to_sheet(mainSheetData);
+    wsMain['!cols'] = Array(Object.keys(mainSheetData[0] || {}).length).fill({ wch: 18 });
+    XLSX.utils.book_append_sheet(workbook, wsMain, 'Dados_BD');
+
+    const wsReadable = XLSX.utils.json_to_sheet(readableSheetData);
+    wsReadable['!cols'] = Array(Object.keys(readableSheetData[0] || {}).length).fill({ wch: 20 });
+    XLSX.utils.book_append_sheet(workbook, wsReadable, 'Vista_Legível');
+
+    if (headersSheetData.length > 0) {
+        const wsHeaders = XLSX.utils.json_to_sheet(headersSheetData);
+        wsHeaders['!cols'] = [{ wch: 10 }, { wch: 40 }];
+        XLSX.utils.book_append_sheet(workbook, wsHeaders, 'Mapeamento_Colunas');
+    }
+
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -768,6 +814,179 @@ export const exportOrdersToExcel = (orders: Order[], customFileName?: string) =>
 
     const fileName = customFileName || `TexFlow_Export_Full_${dateStr}.xlsx`;
     XLSX.writeFile(workbook, fileName);
+};
+
+// --- DEFINIÇÃO GLOBAL DE TODAS AS COLUNAS DISPONÍVEIS PARA EXPORTAÇÃO ---
+export interface ExportColumnDef {
+  key: string;        // chave interna
+  label: string;      // nome legível para o utilizador
+  group: string;      // grupo para organização visual
+}
+
+export const ALL_EXPORT_COLUMNS: ExportColumnDef[] = [
+  // Identificação
+  { key: 'docNr',         label: 'Nr. Documento',       group: 'Identificação' },
+  { key: 'itemNr',        label: 'Item',                group: 'Identificação' },
+  { key: 'id',            label: 'ID Interno',           group: 'Identificação' },
+  // Cliente
+  { key: 'clientName',    label: 'Cliente',              group: 'Cliente' },
+  { key: 'clientCode',    label: 'Cód. Cliente',         group: 'Cliente' },
+  { key: 'comercial',     label: 'Comercial',            group: 'Cliente' },
+  { key: 'po',            label: 'PO',                   group: 'Cliente' },
+  // Artigo
+  { key: 'articleCode',   label: 'Artigo',               group: 'Artigo' },
+  { key: 'reference',     label: 'Referência',           group: 'Artigo' },
+  { key: 'colorCode',     label: 'Cód. Cor',             group: 'Artigo' },
+  { key: 'colorDesc',     label: 'Cor',                  group: 'Artigo' },
+  { key: 'size',          label: 'Tamanho',              group: 'Artigo' },
+  { key: 'sizeDesc',      label: 'Desc. Tamanho',        group: 'Artigo' },
+  { key: 'family',        label: 'Família',              group: 'Artigo' },
+  { key: 'ean',           label: 'EAN',                  group: 'Artigo' },
+  // Quantidades
+  { key: 'qtyRequested',  label: 'Qtd. Pedida',          group: 'Quantidades' },
+  { key: 'qtyBilled',     label: 'Qtd. Faturada',        group: 'Quantidades' },
+  { key: 'qtyOpen',       label: 'Qtd. Em Aberto',       group: 'Quantidades' },
+  { key: 'felpoCruQty',   label: 'Qtd. Felpo Cru',       group: 'Quantidades' },
+  { key: 'tinturariaQty', label: 'Qtd. Tinturaria',      group: 'Quantidades' },
+  { key: 'confRoupoesQty',label: 'Qtd. Conf. Roupões',   group: 'Quantidades' },
+  { key: 'confFelposQty', label: 'Qtd. Conf. Felpos',    group: 'Quantidades' },
+  { key: 'embAcabQty',    label: 'Qtd. Embalagem',       group: 'Quantidades' },
+  { key: 'stockCxQty',    label: 'Qtd. Stock Caixa',     group: 'Quantidades' },
+  // Datas
+  { key: 'issueDate',     label: 'Data Emissão',         group: 'Datas' },
+  { key: 'requestedDate', label: 'Data Entrega Pedida',  group: 'Datas' },
+  { key: 'dataEnt',       label: 'Data Entrada',         group: 'Datas' },
+  { key: 'dataTec',       label: 'Data Tecelagem',       group: 'Datas' },
+  { key: 'felpoCruDate',  label: 'Data Felpo Cru',       group: 'Datas' },
+  { key: 'tinturariaDate',label: 'Data Tinturaria',      group: 'Datas' },
+  { key: 'confDate',      label: 'Data Confecção',       group: 'Datas' },
+  { key: 'armExpDate',    label: 'Data Prev. Armazém',   group: 'Datas' },
+  // Datas Especiais
+  { key: 'dataEspecial',  label: 'Data Especial',        group: 'Datas Especiais' },
+  { key: 'dataPrinter',   label: 'Data Printer',         group: 'Datas Especiais' },
+  { key: 'dataDebuxo',    label: 'Data Debuxo',          group: 'Datas Especiais' },
+  { key: 'dataAmostras',  label: 'Data Amostras',        group: 'Datas Especiais' },
+  { key: 'dataBordados',  label: 'Data Bordados',        group: 'Datas Especiais' },
+  // Estado / Aplicação
+  { key: 'estado',        label: 'Estado',               group: 'Estado / App' },
+  { key: 'priority',      label: 'Prioridade',           group: 'Estado / App' },
+  { key: 'isManual',      label: 'Conf. Manual',         group: 'Estado / App' },
+  { key: 'isArchived',    label: 'Arquivado',            group: 'Estado / App' },
+  { key: 'archivedAt',    label: 'Arquivado Em',         group: 'Estado / App' },
+  { key: 'archivedBy',    label: 'Arquivado Por',        group: 'Estado / App' },
+  // Observações por Sector
+  { key: 'obs_tecelagem', label: 'Obs. Tecelagem',       group: 'Observações' },
+  { key: 'obs_felpo_cru', label: 'Obs. Felpo Cru',       group: 'Observações' },
+  { key: 'obs_tinturaria',label: 'Obs. Tinturaria',      group: 'Observações' },
+  { key: 'obs_confeccao', label: 'Obs. Confecção',       group: 'Observações' },
+  { key: 'obs_embalagem', label: 'Obs. Embalagem',       group: 'Observações' },
+  { key: 'obs_expedicao', label: 'Obs. Expedição',       group: 'Observações' },
+  // Datas Previstas por Sector
+  { key: 'prev_tecelagem',label: 'Prev. Tecelagem',      group: 'Datas Previstas' },
+  { key: 'prev_felpo_cru',label: 'Prev. Felpo Cru',      group: 'Datas Previstas' },
+  { key: 'prev_tinturaria',label:'Prev. Tinturaria',     group: 'Datas Previstas' },
+  { key: 'prev_confeccao',label: 'Prev. Confecção',      group: 'Datas Previstas' },
+  { key: 'prev_embalagem',label: 'Prev. Embalagem',      group: 'Datas Previstas' },
+  { key: 'prev_expedicao',label: 'Prev. Expedição',      group: 'Datas Previstas' },
+  // Motivos de Paragem por Sector
+  { key: 'stop_tecelagem',label: 'Motivo Tecelagem',     group: 'Motivos de Paragem' },
+  { key: 'stop_felpo_cru',label: 'Motivo Felpo Cru',     group: 'Motivos de Paragem' },
+  { key: 'stop_tinturaria',label:'Motivo Tinturaria',    group: 'Motivos de Paragem' },
+  { key: 'stop_confeccao',label: 'Motivo Confecção',     group: 'Motivos de Paragem' },
+  { key: 'stop_embalagem',label: 'Motivo Embalagem',     group: 'Motivos de Paragem' },
+  { key: 'stop_expedicao',label: 'Motivo Expedição',     group: 'Motivos de Paragem' },
+];
+
+export const DEFAULT_SELECTED_COLUMNS: string[] = [
+  'docNr', 'itemNr', 'clientName', 'comercial', 'po',
+  'reference', 'colorDesc', 'sizeDesc', 'family',
+  'qtyRequested', 'qtyOpen', 'requestedDate', 'estado', 'priority',
+];
+
+// --- PERSISTÊNCIA DE CONFIGURAÇÃO DE COLUNAS ---
+export const saveExportColumnsConfig = async (selectedKeys: string[]) => {
+  const db = await initDB();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_EXPORT_COLUMNS, 'readwrite');
+    tx.objectStore(STORE_EXPORT_COLUMNS).put(selectedKeys, 'config');
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+export const loadExportColumnsConfig = async (): Promise<string[] | null> => {
+  const db = await initDB();
+  return new Promise((resolve) => {
+    const tx = db.transaction(STORE_EXPORT_COLUMNS, 'readonly');
+    const req = tx.objectStore(STORE_EXPORT_COLUMNS).get('config');
+    tx.oncomplete = () => resolve(req.result || null);
+    tx.onerror = () => resolve(null);
+  });
+};
+
+// Helper para obter o valor de uma coluna a partir de uma Order
+const getColumnValue = (order: Order, key: string): any => {
+  const dateFields = ['issueDate','requestedDate','dataEnt','dataTec','felpoCruDate',
+    'tinturariaDate','confDate','armExpDate','dataEspecial','dataPrinter',
+    'dataDebuxo','dataAmostras','dataBordados','archivedAt'];
+
+  if (key === 'estado') return getOrderState(order);
+  if (key === 'priority') return order.priority === 1 ? 'Alta' : order.priority === 2 ? 'Média' : order.priority === 3 ? 'Baixa' : '';
+  if (key === 'isManual') return order.isManual ? 'Sim' : 'Não';
+  if (key === 'isArchived') return order.isArchived ? 'Sim' : 'Não';
+
+  if (key.startsWith('obs_')) {
+    const sectorId = key.replace('obs_', '');
+    return order.sectorObservations?.[sectorId] || '';
+  }
+  if (key.startsWith('prev_')) {
+    const sectorId = key.replace('prev_', '');
+    return formatDate(order.sectorPredictedDates?.[sectorId]);
+  }
+  if (key.startsWith('stop_')) {
+    const sectorId = key.replace('stop_', '');
+    return order.sectorStopReasons?.[sectorId] || '';
+  }
+
+  const val = (order as any)[key];
+  if (dateFields.includes(key) && val) return formatDate(val);
+  return val ?? '';
+};
+
+// --- EXPORTAÇÃO PERSONALIZADA (com colunas e ordem configuradas) ---
+export const exportCustomColumns = (
+  orders: Order[],
+  selectedColumnKeys: string[],
+  customFileName?: string
+) => {
+  if (orders.length === 0 || selectedColumnKeys.length === 0) return;
+
+  const colDefs = selectedColumnKeys
+    .map(k => ALL_EXPORT_COLUMNS.find(c => c.key === k))
+    .filter(Boolean) as ExportColumnDef[];
+
+  const sheetData = orders.map(order => {
+    const row: Record<string, any> = {};
+    colDefs.forEach(col => {
+      row[col.label] = getColumnValue(order, col.key);
+    });
+    return row;
+  });
+
+  const workbook = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(sheetData);
+  ws['!cols'] = Array(colDefs.length).fill({ wch: 22 });
+  XLSX.utils.book_append_sheet(workbook, ws, 'Exportação');
+
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = now.getFullYear();
+  const dateStr = `${day}-${month}-${year}`;
+  const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+
+  const fileName = customFileName || `TexFlow_Personalizado_${dateStr}_${timeStr}.xlsx`;
+  XLSX.writeFile(workbook, fileName);
 };
 
 export const generateMockOrders = (count: number = 20): Order[] => {
