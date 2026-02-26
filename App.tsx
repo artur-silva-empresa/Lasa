@@ -100,7 +100,7 @@ const App: React.FC = () => {
     if (notification) {
       const timer = setTimeout(() => {
         setNotification(null);
-      }, 5000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [notification]);
@@ -152,7 +152,89 @@ const App: React.FC = () => {
   }, [orders, excelHeaders, isLoading]);
 
   const handleUpdateOrder = (updatedOrder: Order) => {
-    setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+    setOrders(prev => {
+        const oldOrder = prev.find(o => o.id === updatedOrder.id);
+        if (!oldOrder) return prev;
+
+        // Check for predicted date changes
+        const oldDates = oldOrder.sectorPredictedDates || {};
+        const newDates = updatedOrder.sectorPredictedDates || {};
+
+        let finalOrder = { ...updatedOrder };
+
+        // Find which sector changed
+        const changedSectorId = Object.keys(newDates).find(id => {
+            const oldDate = oldDates[id];
+            const newDate = newDates[id];
+            if (!oldDate && !newDate) return false;
+            if (!oldDate || !newDate) return true;
+            return new Date(oldDate).getTime() !== new Date(newDate).getTime();
+        });
+
+        if (changedSectorId) {
+            const sectorIndex = SECTORS.findIndex(s => s.id === changedSectorId);
+            if (sectorIndex !== -1) {
+                const oldDate = oldDates[changedSectorId];
+                const newDate = newDates[changedSectorId];
+
+                // If it was pending, clear it because the user just validated/changed it
+                const pending = { ...(finalOrder.sectorPredictedDatesPending || {}) };
+                delete pending[changedSectorId];
+                finalOrder.sectorPredictedDatesPending = pending;
+
+                if (newDate) {
+                    // Calculate delay relative to the previous predicted date or base date
+                    let baseDate: Date | null = null;
+                    switch (changedSectorId) {
+                        case 'tecelagem': baseDate = oldOrder.dataTec; break;
+                        case 'felpo_cru': baseDate = oldOrder.felpoCruDate; break;
+                        case 'tinturaria': baseDate = oldOrder.tinturariaDate; break;
+                        case 'confeccao': baseDate = oldOrder.confDate; break;
+                        case 'embalagem': baseDate = oldOrder.armExpDate; break;
+                        case 'expedicao': baseDate = oldOrder.armExpDate; break;
+                    }
+
+                    const referenceDate = oldDate || baseDate;
+                    if (referenceDate) {
+                        const diffTime = new Date(newDate).getTime() - new Date(referenceDate).getTime();
+                        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+                        if (diffDays !== 0) {
+                            // Propagate to subsequent sectors
+                            const updatedPredictedDates = { ...newDates };
+                            const updatedPending = { ...(finalOrder.sectorPredictedDatesPending || {}) };
+
+                            for (let i = sectorIndex + 1; i < SECTORS.length; i++) {
+                                const s = SECTORS[i];
+                                let sBaseDate: Date | null = null;
+                                switch (s.id) {
+                                    case 'tecelagem': sBaseDate = oldOrder.dataTec; break;
+                                    case 'felpo_cru': sBaseDate = oldOrder.felpoCruDate; break;
+                                    case 'tinturaria': sBaseDate = oldOrder.tinturariaDate; break;
+                                    case 'confeccao': sBaseDate = oldOrder.confDate; break;
+                                    case 'embalagem': sBaseDate = oldOrder.armExpDate; break;
+                                    case 'expedicao': sBaseDate = oldOrder.armExpDate; break;
+                                }
+
+                                const currentPredDate = updatedPredictedDates[s.id] || sBaseDate;
+
+                                if (currentPredDate) {
+                                    const nextDate = new Date(currentPredDate);
+                                    nextDate.setDate(nextDate.getDate() + diffDays);
+                                    updatedPredictedDates[s.id] = nextDate;
+                                    updatedPending[s.id] = true; // Mark as pending
+                                }
+                            }
+                            finalOrder.sectorPredictedDates = updatedPredictedDates;
+                            finalOrder.sectorPredictedDatesPending = updatedPending;
+                        }
+                    }
+                }
+            }
+        }
+
+        return prev.map(o => o.id === finalOrder.id ? finalOrder : o);
+    });
   };
   
   // Função para atualizar prioridade em lote (por Nr Doc)
@@ -480,10 +562,19 @@ const App: React.FC = () => {
     }
   };
 
-  const alertCount = React.useMemo(() => orders.filter(o => {
-    const now = new Date();
-    return o.requestedDate && o.requestedDate < now && o.qtyOpen > 0;
-  }).length, [orders]);
+  const alertCount = React.useMemo(() => {
+    const lateCount = orders.filter(o => {
+        const now = new Date();
+        return o.requestedDate && o.requestedDate < now && o.qtyOpen > 0;
+    }).length;
+
+    const pendingCount = orders.reduce((acc, o) => {
+        const pending = o.sectorPredictedDatesPending || {};
+        return acc + Object.values(pending).filter(v => v === true).length;
+    }, 0);
+
+    return lateCount + pendingCount;
+  }, [orders]);
 
   // Se não estiver logado, mostra apenas o Login
   if (!currentUser) {
@@ -516,20 +607,20 @@ const App: React.FC = () => {
   return (
     <>
       {!isOnline && (
-        <div className="fixed top-0 left-0 right-0 bg-amber-500 text-white text-[10px] font-bold uppercase tracking-widest py-1 flex items-center justify-center gap-2 z-[120] animate-in slide-in-from-top duration-300 safe-top">
+        <div className="fixed bottom-6 right-6 bg-amber-500 text-white text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl flex items-center justify-center gap-2 z-[120] animate-in slide-in-from-bottom duration-300 shadow-2xl border border-amber-400">
           <WifiOff size={12} />
-          Modo Offline Ativo - A utilizar dados locais
+          Modo Offline
         </div>
       )}
 
       {showInstallBanner && (
-        <div className="fixed bottom-20 md:bottom-6 left-6 right-6 md:left-auto md:right-6 md:w-80 z-[110] animate-in slide-in-from-bottom duration-500">
+        <div className="fixed bottom-6 right-6 md:w-80 z-[110] animate-in slide-in-from-bottom duration-500">
           <div className="bg-blue-600 dark:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl border border-blue-500 dark:border-blue-600 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 p-2 rounded-lg"><Download size={20} /></div>
               <div>
                 <h4 className="font-bold text-xs uppercase tracking-tight">Instalar TexFlow</h4>
-                <p className="text-[10px] opacity-80 leading-tight">Aceda mais rápido e trabalhe offline.</p>
+                <p className="text-[10px] opacity-80 leading-tight">Aceda mais rápido.</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -541,7 +632,7 @@ const App: React.FC = () => {
       )}
 
       {notification && (
-        <div className="fixed top-6 right-6 z-[115] animate-in slide-in-from-right duration-300 max-w-md">
+        <div className="fixed bottom-6 right-6 z-[115] animate-in slide-in-from-bottom duration-300 max-w-md">
             <div className="bg-slate-800 dark:bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-start gap-4 border border-slate-700 dark:border-slate-800">
                 <div className="bg-emerald-500 rounded-full p-1 mt-0.5 shrink-0 text-slate-900">
                     <CheckCircle2 size={16} strokeWidth={3} />

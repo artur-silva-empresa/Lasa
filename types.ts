@@ -112,6 +112,9 @@ export interface Order {
   // Sector Predicted Dates (New field)
   sectorPredictedDates?: Record<string, Date | null>;
   
+  // Pending validation for predicted dates
+  sectorPredictedDatesPending?: Record<string, boolean>;
+
   // Raw data from excel for round-trip capability
   _raw?: Record<string, any>;
 }
