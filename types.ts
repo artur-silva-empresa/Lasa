@@ -61,7 +61,6 @@ export interface Order {
   reference: string;
   colorCode: string;
   colorDesc: string;
-  size: string;
   family: string;
   sizeDesc: string;
   ean: string;

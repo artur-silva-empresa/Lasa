@@ -106,7 +106,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
             {/* Linha 2: Detalhes Artigo + Badges */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="text-sm md:text-base font-bold text-slate-500 dark:text-slate-400 flex items-center flex-wrap gap-x-2">
-                    {order.reference} <span className="text-slate-300 dark:text-slate-600">•</span> {order.colorDesc} <span className="text-slate-300 dark:text-slate-600">•</span> {order.sizeDesc || order.size}
+                    {order.reference} <span className="text-slate-300 dark:text-slate-600">•</span> {order.colorDesc} <span className="text-slate-300 dark:text-slate-600">•</span> {order.sizeDesc}
                 </span>
 
                 <div className="flex items-center gap-2">
@@ -234,7 +234,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
               <InfoCard icon={<FileIcon size={14} />} label="PO" value={order.po} />
               <InfoCard icon={<ShoppingBag size={14} />} label="Referência" value={order.reference} subValue={order.colorDesc} />
               <InfoCard icon={<Palette size={14} />} label="Artigo" value={order.articleCode} />
-              <InfoCard icon={<Ruler size={14} />} label="Medida / Tamanho" value={order.sizeDesc || order.size} />
+              <InfoCard icon={<Ruler size={14} />} label="Medida" value={order.sizeDesc} />
             </section>
 
             {/* Qty & Dates */}

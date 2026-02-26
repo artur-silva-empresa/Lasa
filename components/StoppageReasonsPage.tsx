@@ -128,14 +128,14 @@ const StoppageReasonsPage: React.FC = () => {
         )}
 
         <div className="grid grid-cols-1 gap-6">
-          {Object.entries(groupedReasons).map(([type, typeReasons]) => (
+          {(Object.entries(groupedReasons) as [string, StoppageReason[]][]).map(([type, typeReasons]) => (
             <div key={type} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
               <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
                 <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">{type}</h3>
                 <span className="text-xs font-medium text-slate-400 bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-full">{typeReasons.length} motivos</span>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {typeReasons.map((reason) => (
+                {typeReasons.map((reason: StoppageReason) => (
                   <div key={reason.id} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group flex items-center justify-between gap-4">
                     {editingId === reason.id ? (
                       <div className="flex-1 flex flex-col md:flex-row gap-3 items-center w-full">

@@ -453,7 +453,6 @@ export const parseExcelFile = async (file: File): Promise<{ orders: Order[], hea
                 reference: String(row['I'] || '').trim(),
                 colorCode: String(row['J'] || '').trim(),
                 colorDesc: String(row['K'] || '').trim(),
-                size: String(row['L'] || '').trim(),
                 family: String(row['M'] || '').trim(),
                 sizeDesc: String(row['N'] || '').trim(),
                 ean: String(row['O'] || '').trim(),
@@ -595,7 +594,7 @@ export const exportOrdersToSQLite = async (orders: Order[], headers: Record<stri
       id TEXT PRIMARY KEY, docNr TEXT, clientCode TEXT, clientName TEXT, comercial TEXT,
       issueDate INTEGER, requestedDate INTEGER, itemNr INTEGER, po TEXT,
       articleCode TEXT, reference TEXT, colorCode TEXT, colorDesc TEXT,
-      size TEXT, family TEXT, sizeDesc TEXT, ean TEXT, qtyRequested REAL,
+      family TEXT, sizeDesc TEXT, ean TEXT, qtyRequested REAL,
       dataTec INTEGER, felpoCruQty REAL, felpoCruDate INTEGER,
       tinturariaQty REAL, tinturariaDate INTEGER,
       confRoupoesQty REAL, confFelposQty REAL, confDate INTEGER,
@@ -609,12 +608,12 @@ export const exportOrdersToSQLite = async (orders: Order[], headers: Record<stri
   db.run(schema);
 
   db.run("BEGIN TRANSACTION");
-  // 45 colunas no total
+  // 44 colunas no total
   const stmt = db.prepare(`
     INSERT INTO orders VALUES (
       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?
+      ?, ?, ?, ?
     )
   `);
 
@@ -624,7 +623,7 @@ export const exportOrdersToSQLite = async (orders: Order[], headers: Record<stri
         o.issueDate ? o.issueDate.getTime() : null,
         o.requestedDate ? o.requestedDate.getTime() : null,
         o.itemNr, o.po, o.articleCode, o.reference, o.colorCode, o.colorDesc,
-        o.size, o.family, o.sizeDesc, o.ean, o.qtyRequested,
+        o.family, o.sizeDesc, o.ean, o.qtyRequested,
         o.dataTec ? o.dataTec.getTime() : null,
         o.felpoCruQty, o.felpoCruDate ? o.felpoCruDate.getTime() : null,
         o.tinturariaQty, o.tinturariaDate ? o.tinturariaDate.getTime() : null,
@@ -705,7 +704,7 @@ export const exportOrdersToExcel = (orders: Order[], headers: Record<string, str
         row['I'] = o.reference;
         row['J'] = o.colorCode;
         row['K'] = o.colorDesc;
-        row['L'] = o.size;
+        row['L'] = o.comercial;
         row['M'] = o.family;
         row['N'] = o.sizeDesc;
         row['O'] = o.ean;
@@ -748,7 +747,7 @@ export const exportOrdersToExcel = (orders: Order[], headers: Record<string, str
     const headerRow = {
         'A': 'ID Interno', 'B': 'Nr. Documento', 'C': 'Cliente', 'D': 'Data Emissão', 'E': 'Data Entrega',
         'F': 'Item', 'G': 'PO', 'H': 'Artigo', 'I': 'Referência', 'J': 'Cód. Cor', 'K': 'Cor',
-        'L': 'Tamanho', 'M': 'Família', 'N': 'Desc. Tamanho', 'O': 'EAN', 'P': 'Qtd. Pedida',
+        'L': 'Comercial', 'M': 'Família', 'N': 'Desc. Tamanho', 'O': 'EAN', 'P': 'Qtd. Pedida',
         'Q': 'Data Tecelagem', 'R': 'Qtd. Felpo Cru', 'S': 'Data Felpo Cru', 'T': 'Qtd. Tinturaria',
         'U': 'Data Tinturaria', 'V': 'Qtd. Conf. Roupões', 'W': 'Qtd. Conf. Felpos', 'X': 'Data Confecção',
         'Y': 'Qtd. Embalagem', 'Z': 'Data Prev. Armazém', 'AA': 'Qtd. Stock Caixa', 'AB': 'Qtd. Faturada',
@@ -798,7 +797,6 @@ export const ALL_EXPORT_COLUMNS: ExportColumnDef[] = [
   { key: 'reference',     label: 'Referência',           group: 'Artigo' },
   { key: 'colorCode',     label: 'Cód. Cor',             group: 'Artigo' },
   { key: 'colorDesc',     label: 'Cor',                  group: 'Artigo' },
-  { key: 'size',          label: 'Tamanho',              group: 'Artigo' },
   { key: 'sizeDesc',      label: 'Desc. Tamanho',        group: 'Artigo' },
   { key: 'family',        label: 'Família',              group: 'Artigo' },
   { key: 'ean',           label: 'EAN',                  group: 'Artigo' },
@@ -964,7 +962,6 @@ export const generateMockOrders = (count: number = 20): Order[] => {
     reference: `REF-${300 + i}`,
     colorCode: "COR-01",
     colorDesc: "AZUL",
-    size: "L",
     family: "BANHO",
     sizeDesc: "100x150",
     ean: "5601234567890",
