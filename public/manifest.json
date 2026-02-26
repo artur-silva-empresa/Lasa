@@ -14,8 +14,8 @@
     { "src": "./icons/icon-384x384.png", "type": "image/png", "sizes": "384x384" },
     { "src": "./icons/icon-512x512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
   ],
-  "start_url": "/Lasa-app/",
-  "scope": "/Lasa-app/",
+  "start_url": "/Lasa/",
+  "scope": "/Lasa/",
   "display": "standalone",
   "orientation": "any",
   "theme_color": "#0f172a",

@@ -1,45 +1,68 @@
 
-const CACHE_NAME = 'texflow-v4-stable';
+// ⚠️ Incrementar a versão a cada deploy para forçar refresh do cache em todos os clientes
+const CACHE_VERSION = 'v6';
+const CACHE_NAME = `texflow-${CACHE_VERSION}`;
 
-// Assets internos críticos
-const PRE_CACHE = [
+// Assets que são pré-cacheados na instalação (shell da aplicação)
+// O Vite gera hashes nos nomes dos ficheiros, por isso cacheamos tudo via fetch intercept
+const PRECACHE_URLS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './sql-wasm.wasm',
 ];
 
+// -------------------------
+// INSTALL — pré-cachear shell
+// -------------------------
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRE_CACHE))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(PRECACHE_URLS).catch((err) => {
+        console.warn('[SW] Falha no pré-cache (normal na 1ª instalação sem rede):', err);
+      });
+    }).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
+// -------------------------
+// ACTIVATE — limpar caches antigos
+// -------------------------
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys.map(k => k !== CACHE_NAME ? caches.delete(k) : null)
-    ))
+    caches.keys().then((cacheNames) =>
+      Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => {
+            console.log('[SW] A remover cache antigo:', name);
+            return caches.delete(name);
+          })
+      )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
+// -------------------------
+// FETCH — estratégia híbrida
+// -------------------------
 self.addEventListener('fetch', (event) => {
-  // Ignorar pedidos que não sejam GET
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // Estratégia: Cache First para Fontes e CDN
-  if (url.origin.includes('fonts.googleapis.com') || 
-      url.origin.includes('fonts.gstatic.com') || 
-      url.origin.includes('esm.sh') ||
-      url.origin.includes('tailwindcss.com')) {
+  // Ignorar pedidos a outros domínios (não há nenhum em modo offline)
+  // Se houver chamadas externas inesperadas, deixar passar sem cache
+  if (url.origin !== self.location.origin) return;
+
+  // Para o ficheiro WASM — sempre Cache First (nunca muda)
+  if (url.pathname.endsWith('.wasm')) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
-        return cached || fetch(event.request).then((response) => {
-          const toCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, toCache));
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           return response;
         });
       })
@@ -47,16 +70,48 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Estratégia: Network First (com Fallback para Cache) para o resto
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        if (response.status === 200) {
-          const toCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, toCache));
-        }
-        return response;
+  // Para assets com hash no nome (JS, CSS, fontes geradas pelo Vite) — Cache First
+  // Os ficheiros com hash nunca mudam de conteúdo, só o nome muda entre builds
+  const hasHash = /\.[a-f0-9]{8,}\.(js|css|woff2?|ttf)(\?.*)?$/.test(url.pathname);
+  if (hasHash) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        }).catch(() => caches.match('./index.html'));
       })
-      .catch(() => caches.match(event.request).then(res => res || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Para index.html e navegação — Stale-While-Revalidate
+  // Responde imediatamente com cache, atualiza em background para o próximo carregamento
+  event.respondWith(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(event.request).then((cached) => {
+        const fetchPromise = fetch(event.request).then((response) => {
+          if (response.status === 200) {
+            cache.put(event.request, response.clone());
+          }
+          return response;
+        }).catch(() => cached); // Se sem rede, usa o que está em cache
+
+        return cached || fetchPromise;
+      });
+    })
   );
+});
+
+// -------------------------
+// MESSAGE — forçar atualização manual
+// -------------------------
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
