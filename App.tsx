@@ -176,6 +176,22 @@ const App: React.FC = () => {
     }));
   };
 
+  // Função para arquivar/desarquivar encomenda (por Nr Doc, apenas admin)
+  const handleArchiveOrder = (docNr: string, archive: boolean) => {
+    const now = new Date();
+    setOrders(prev => prev.map(o => {
+      if (o.docNr === docNr) {
+        return {
+          ...o,
+          isArchived: archive,
+          archivedAt: archive ? now : null,
+          archivedBy: archive ? (currentUser?.name || 'Admin') : undefined
+        };
+      }
+      return o;
+    }));
+  };
+
   // Função para atualizar motivo de paragem em lote (por Nr Doc)
   const handleUpdateStopReason = (docNr: string, sectorId: string, stopReason: string) => {
     setOrders(prev => prev.map(o => {
@@ -396,6 +412,7 @@ const App: React.FC = () => {
           onUpdateManual={handleUpdateManual}
           onUpdateStopReason={handleUpdateStopReason}
           stopReasonsHierarchy={stopReasons}
+          onArchiveOrder={handleArchiveOrder}
         />;
       case 'timeline':
         if (!currentUser?.permissions?.timeline || currentUser?.permissions?.timeline === 'none') {
@@ -418,6 +435,9 @@ const App: React.FC = () => {
             users={users}
             onSaveUser={handleSaveUser}
             onDeleteUser={handleDeleteUser}
+            stopReasonsHierarchy={stopReasons}
+            onUpdateStopReasonsHierarchy={handleUpdateStopReasonsHierarchy}
+            orders={orders}
           />
         );
       case 'stop-reasons':
@@ -451,7 +471,15 @@ const App: React.FC = () => {
   // Se não estiver logado, mostra apenas o Login
   if (!currentUser) {
     return (
-      <Login onLogin={(user) => {
+      <Login onLogin={async (user) => {
+        // Reset da base de dados ao fazer login
+        try {
+          await clearOrdersFromDB();
+        } catch (e) {
+          console.error("Erro ao limpar BD no login:", e);
+        }
+        setOrders([]);
+        setExcelHeaders({});
         setCurrentUser(user);
 
         // Determinar vista inicial baseada em permissões

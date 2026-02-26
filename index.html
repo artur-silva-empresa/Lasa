@@ -22,40 +22,6 @@
     
     <title>TexFlow - Gestão de Encomendas</title>
     <link rel="manifest" href="./manifest.json">
-    <script>
-        // Global error handler for diagnosis
-        window.onerror = function(msg, url, line, col, error) {
-            const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:white;color:red;padding:20px;z-index:99999;border:5px solid red;overflow:auto;max-height:50vh;font-family:monospace;font-size:12px;';
-            errorDiv.innerHTML = '<strong>Erro de Runtime Detectado:</strong><br>' + msg +
-                                '<br><br><strong>Ficheiro:</strong> ' + url +
-                                '<br><strong>Linha/Col:</strong> ' + line + ':' + col +
-                                (error && error.stack ? '<br><br><strong>Stack:</strong><br>' + error.stack.replace(/\n/g, '<br>') : '');
-            document.body.appendChild(errorDiv);
-        };
-        window.addEventListener('unhandledrejection', function(event) {
-            window.onerror('Promise Rejection: ' + event.reason, '', '', '', event.reason);
-        });
-    </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        if (window.tailwind) {
-            tailwind.config = {
-                darkMode: 'class',
-                theme: {
-                    extend: {
-                        colors: {
-                            slate: {
-                                850: '#151e2e', // Custom dark shade
-                                950: '#020617',
-                            }
-                        }
-                    }
-                }
-            };
-        }
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
         body { 
@@ -66,13 +32,10 @@
             width: 100vw;
             overflow: hidden;
             background-color: #f8fafc;
-            /* Impede selecção de texto para parecer mais nativo */
             -webkit-user-select: none;
             user-select: none;
-            /* Remove o delay do clique no mobile */
             touch-action: manipulation;
         }
-        /* Dark mode body background fix */
         html.dark body {
             background-color: #020617;
             color: #f1f5f9;
@@ -85,7 +48,6 @@
         .overflow-y-auto {
             -webkit-overflow-scrolling: touch;
         }
-        /* Ajuste para áreas seguras (notches) */
         .safe-top { padding-top: env(safe-area-inset-top); }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     </style>
@@ -95,16 +57,14 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/Lasa-app/sw.js', { scope: '/Lasa-app/' })
+                // ⚠️ Ajustar '/Lasa/' para o nome do repositório GitHub
+                navigator.serviceWorker.register('/Lasa/sw.js', { scope: '/Lasa/' })
                     .then(reg => {
                         console.log('TexFlow Service Worker registrado com sucesso.');
-                        
-                        // Verificar actualizações do SW
                         reg.addEventListener('updatefound', () => {
                             const newWorker = reg.installing;
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // Nova versão disponível
                                     if(confirm('Nova versão do TexFlow disponível! Recarregar agora?')) {
                                         window.location.reload();
                                     }

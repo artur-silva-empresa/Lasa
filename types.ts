@@ -92,6 +92,11 @@ export interface Order {
   // Manual Confection Flag
   isManual?: boolean;
 
+  // Archived flag (Admin only)
+  isArchived?: boolean;
+  archivedAt?: Date | null;
+  archivedBy?: string;
+
   // Stop Reasons per Sector
   sectorStopReasons?: Record<string, string>;
 
