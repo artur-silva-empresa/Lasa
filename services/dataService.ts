@@ -249,15 +249,15 @@ export const verifyPermission = async (handle: any, readWrite: boolean = false) 
 };
 
 // --- CONFIGURAÇÃO SQL.JS ---
-// O ficheiro sql-wasm.wasm é copiado de node_modules para public/ pelo script prebuild
-// garantindo funcionamento 100% offline sem depender de CDNs externos
+// O ficheiro sql-wasm.wasm é copiado de node_modules para public/ pelo script prebuild.
+// Usamos import.meta.env.BASE_URL para que o path funcione automaticamente
+// com qualquer valor de base configurado no vite.config.ts (ex: '/Lasa/' ou '/').
 const getSql = async () => {
   try {
-    // Usar import.meta.url para calcular o path base corretamente
-    // independentemente do base URL configurado no Vite (ex: /Lasa/ ou /)
-    const wasmUrl = new URL('/Lasa/sql-wasm.wasm', window.location.origin).href;
+    const base = (typeof import.meta !== 'undefined' && (import.meta as any).env?.BASE_URL) || '/Lasa/';
+    const wasmPath = `${base}sql-wasm.wasm`;
     return await initSqlJs({
-      locateFile: () => wasmUrl
+      locateFile: () => wasmPath
     });
   } catch (error) {
     console.error("Falha ao inicializar SQL.js:", error);
