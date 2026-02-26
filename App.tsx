@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [users, setUsers] = React.useState<User[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [activeView, setActiveView] = React.useState('dashboard');
+  const [previousView, setPreviousView] = React.useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = React.useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
   const [isOnline, setIsOnline] = React.useState(navigator.onLine);
@@ -308,8 +309,10 @@ const App: React.FC = () => {
   , [orders, selectedOrderId]);
 
   const handleViewDetails = React.useCallback((order: Order) => {
+    setPreviousView(activeView);
     setSelectedOrderId(order.id);
-  }, []);
+    setActiveView('order-details');
+  }, [activeView]);
   
   // Função chamada pelo Dashboard ao clicar num cartão
   const handleNavigateToOrders = (filter: ActiveFilterType) => {
@@ -337,6 +340,7 @@ const App: React.FC = () => {
   // Reset do filtro ao mudar de vista manualmente
   const handleSetActiveView = (view: string) => {
       if (view !== 'orders') setActiveDashboardFilter(null);
+      if (view !== 'order-details') setSelectedOrderId(null);
       setActiveView(view);
   };
 
@@ -442,6 +446,19 @@ const App: React.FC = () => {
         );
       case 'stop-reasons':
         return <StopReasons hierarchy={stopReasons} onUpdateHierarchy={handleUpdateStopReasonsHierarchy} />;
+      case 'order-details':
+        return selectedOrder ? (
+          <OrderDetails
+            order={selectedOrder}
+            onClose={() => {
+              setActiveView(previousView || 'orders');
+              setSelectedOrderId(null);
+            }}
+            onUpdateOrder={handleUpdateOrder}
+            user={currentUser}
+            stopReasonsHierarchy={stopReasons}
+          />
+        ) : null;
       case 'none':
         return (
             <div className="h-full flex flex-col items-center justify-center p-8 text-center">
@@ -553,16 +570,6 @@ const App: React.FC = () => {
       >
         {renderContent()}
       </Layout>
-
-      {selectedOrder && (
-        <OrderDetails 
-          order={selectedOrder} 
-          onClose={() => setSelectedOrderId(null)}
-          onUpdateOrder={handleUpdateOrder}
-          user={currentUser}
-          stopReasonsHierarchy={stopReasons}
-        />
-      )}
 
       {isImportModalOpen && (
         <ImportModal 

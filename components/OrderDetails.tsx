@@ -79,15 +79,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
 
   return (
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 md:p-4 overscroll-none"
-      onClick={onClose}
+      className="bg-white dark:bg-slate-950 w-full h-full flex flex-col overflow-hidden"
     >
-      <div 
-        className="bg-white dark:bg-slate-950 w-full max-w-[95vw] lg:max-w-6xl xl:max-w-7xl h-[95vh] rounded-2xl md:rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800"
-        onClick={(e) => e.stopPropagation()}
-      >
         {/* Header */}
-        <div className="p-4 md:p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
+        <div className="p-4 md:p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-start bg-slate-50 dark:bg-slate-900 shrink-0">
           <div className="space-y-1 w-full max-w-[90%]">
             
             {/* Linha 1: Cliente (Destaque Principal) + Nr Documento (Centrado Verticalmente) */}
@@ -313,7 +308,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
             </div>
           </aside>
         </div>
-      </div>
     </div>
   );
 };
