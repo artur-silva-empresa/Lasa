@@ -22,7 +22,7 @@ import {
   ArchiveRestore
 } from 'lucide-react';
 import { Order, OrderState, SectorState, User } from '../types';
-import { getOrderState, getSectorState, exportOrdersToSQLite, getDirectoryHandle, getWeekRange, exportOrdersToExcel } from '../services/dataService';
+import { getOrderState, getSectorState, exportOrdersToSQLite, getDirectoryHandle, getWeekRange, exportOrdersToExcel, loadExportColumnsConfig, exportCustomColumns, DEFAULT_SELECTED_COLUMNS } from '../services/dataService';
 import { formatDate } from '../utils/formatters';
 import { SECTORS } from '../constants';
 import StopReasonSelector from './StopReasonSelector';
@@ -109,6 +109,10 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
   // Estados para exportação Excel
   const [isExportingExcel, setIsExportingExcel] = React.useState(false);
   const [excelExportSuccess, setExcelExportSuccess] = React.useState(false);
+
+  // Estados para exportação Tabela Personalizada
+  const [isExportingTable, setIsExportingTable] = React.useState(false);
+  const [tableExportSuccess, setTableExportSuccess] = React.useState(false);
 
   const statusOptions = [
     { id: 'All', label: 'Todos os Estados' },
@@ -364,6 +368,39 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
     }
   };
 
+  const handleTableExport = async () => {
+    if (finalFilteredOrders.length === 0) return;
+    setIsExportingTable(true);
+    setTableExportSuccess(false);
+    try {
+        const savedConfig = await loadExportColumnsConfig();
+        const selectedKeys = savedConfig && savedConfig.length > 0 ? savedConfig : DEFAULT_SELECTED_COLUMNS;
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const isFullList = orders.length === finalFilteredOrders.length;
+        const prefix = isFullList ? "Tabela completa" : "Tabela parcial";
+
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = now.getFullYear();
+        const dateStr = `${day}-${month}-${year}`;
+        const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+
+        const fileName = `${prefix} ${dateStr} ${timeStr}.xlsx`;
+
+        exportCustomColumns(finalFilteredOrders, selectedKeys, fileName);
+        setTableExportSuccess(true);
+        setTimeout(() => setTableExportSuccess(false), 3000);
+    } catch (error) {
+        console.error(error);
+        alert("Erro ao exportar Tabela.");
+    } finally {
+        setIsExportingTable(false);
+    }
+  };
+
   const getStatusBadge = (order: Order) => {
     const state = getOrderState(order);
     switch (state) {
@@ -446,6 +483,33 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
             </div>
             
             <div className="hidden md:flex items-center gap-2">
+                {/* Botão Exportar Tabela (Personalizada) */}
+                <button
+                  onClick={handleTableExport}
+                  disabled={isExportingTable}
+                  className={`px-4 py-2 text-white rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-2 min-w-[150px] justify-center ${
+                    tableExportSuccess ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-green-600 hover:bg-green-700 disabled:bg-green-400'
+                  }`}
+                  title="Exportar Tabela (Colunas Personalizadas)"
+                >
+                   {isExportingTable ? (
+                      <>
+                          <Loader2 size={16} className="animate-spin" />
+                          <span className="text-xs font-bold uppercase">A Gerar...</span>
+                      </>
+                   ) : tableExportSuccess ? (
+                      <>
+                          <Check size={16} />
+                          <span className="text-xs font-bold uppercase">Sucesso</span>
+                      </>
+                   ) : (
+                      <>
+                          <Download size={16} />
+                          <span className="text-xs font-bold uppercase">Exportar Tabela</span>
+                      </>
+                   )}
+                </button>
+
                 {/* Botão Exportar Excel */}
                 <button 
                   onClick={handleExcelExport}
@@ -636,10 +700,20 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
 
               {/* Botões Mobile */}
               <div className="md:hidden flex gap-2">
+                <button
+                  onClick={handleTableExport}
+                  disabled={isExportingTable}
+                  className="p-2 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:bg-green-400 transition-all shadow-sm active:scale-95"
+                  title="Exportar Tabela"
+                >
+                  {isExportingTable ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                </button>
+
                 <button 
                   onClick={handleExcelExport}
                   disabled={isExportingExcel}
-                  className="p-2 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:bg-green-400 transition-all shadow-sm active:scale-95"
+                  className="p-2 bg-slate-600 text-white rounded-xl hover:bg-slate-700 disabled:bg-slate-400 transition-all shadow-sm active:scale-95"
+                 title="Exportar Excel"
                 >
                   {isExportingExcel ? <Loader2 size={18} className="animate-spin" /> : <FileSpreadsheet size={18} />}
                 </button>

@@ -210,7 +210,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, on
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
-            <button className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400">
+            <button
+              className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400"
+              title={`${alertCount} Notificações (Atrasos e Datas Pendentes)`}
+            >
               <Bell size={20} />
               {alertCount > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-white dark:border-slate-900">

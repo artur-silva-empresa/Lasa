@@ -8,7 +8,8 @@ import {
   Save,
   Edit2,
   X,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import { Order, Sector, User } from '../types';
 import { formatDate } from '../utils/formatters';
@@ -104,10 +105,16 @@ const SectorOrderTable: React.FC<SectorOrderTableProps> = ({ orders, sector, onV
         [sector.id]: editDate ? new Date(editDate) : null
     };
 
+    const updatedPending = {
+        ...(order.sectorPredictedDatesPending || {})
+    };
+    delete updatedPending[sector.id];
+
     onUpdateOrder({
         ...order,
         sectorObservations: updatedObservations,
-        sectorPredictedDates: updatedPredictedDates
+        sectorPredictedDates: updatedPredictedDates,
+        sectorPredictedDatesPending: updatedPending
     });
 
     setEditingId(null);
@@ -240,9 +247,16 @@ const SectorOrderTable: React.FC<SectorOrderTableProps> = ({ orders, sector, onV
                             className="w-full text-xs p-1 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-white"
                         />
                     ) : (
-                        <span className={`text-xs font-bold ${predictedDate ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
-                            {predictedDate ? formatDate(predictedDate) : '-'}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                            <span className={`text-xs font-bold ${order.sectorPredictedDatesPending?.[sector.id] ? 'text-orange-500 animate-pulse' : (predictedDate ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400')}`}>
+                                {predictedDate ? formatDate(predictedDate) : '-'}
+                            </span>
+                            {order.sectorPredictedDatesPending?.[sector.id] && (
+                                <span className="text-[8px] font-black text-orange-500 uppercase flex items-center gap-0.5">
+                                    <AlertCircle size={8} /> Pendente
+                                </span>
+                            )}
+                        </div>
                     )}
                   </td>
 
