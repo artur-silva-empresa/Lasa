@@ -10,18 +10,18 @@
     <meta name="apple-mobile-web-app-title" content="TexFlow">
     <meta name="description" content="TexFlow - Gestão e Acompanhamento de Encomendas Têxteis">
 
-    <!-- Favicon — paths absolutos para funcionar com base: '/Lasa/' -->
-    <link rel="icon" type="image/x-icon"  href="/Lasa/icons/favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="/Lasa/icons/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/Lasa/icons/favicon-16x16.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/Lasa/icons/apple-touch-icon.png">
-    <meta name="msapplication-TileImage" content="/Lasa/icons/icon-144x144.png">
+    <!-- Favicon — paths relativos para o Vite injetar o base: '/Lasa/' -->
+    <link rel="icon" type="image/x-icon"  href="icons/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+    <meta name="msapplication-TileImage" content="icons/icon-144x144.png">
     <meta name="msapplication-TileColor" content="#0f172a">
 
     <title>TexFlow - Gestão de Encomendas</title>
 
-    <!-- manifest com path absoluto -->
-    <link rel="manifest" href="/Lasa/manifest.json">
+    <!-- manifest com path relativo para o Vite gerir o base -->
+    <link rel="manifest" href="manifest.json">
 
     <style>
         body {
@@ -48,7 +48,8 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/Lasa/sw.js', { scope: '/Lasa/' })
+                // Caminhos relativos para o SW funcionar em subdiretórios
+                navigator.serviceWorker.register('sw.js', { scope: './' })
                     .then(reg => {
                         console.log('TexFlow Service Worker registrado com sucesso.');
                         reg.addEventListener('updatefound', () => {
@@ -68,6 +69,6 @@
     </script>
 
     <!-- O Vite substitui esta linha pelo bundle compilado durante o build -->
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>

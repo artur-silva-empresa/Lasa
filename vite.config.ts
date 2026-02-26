@@ -43,10 +43,6 @@ export default defineConfig({
   // Incluir wasm como asset estático para o Vite não tentar processar
   assetsInclude: ['**/*.wasm'],
 
-  optimizeDeps: {
-    exclude: ['sql.js']
-  },
-
   build: {
     rollupOptions: {
       output: {

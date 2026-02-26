@@ -26,6 +26,12 @@ export interface UserPermissions {
   sectors: Record<string, PermissionLevel>;
 }
 
+export interface StoppageReason {
+  id: string;
+  type: string;
+  reason: string;
+}
+
 export interface User {
   id: string;
   username: string;
