@@ -17,7 +17,9 @@ import {
   Filter,
   Flag,
   FileSpreadsheet,
-  X
+  X,
+  Archive,
+  ArchiveRestore
 } from 'lucide-react';
 import { Order, OrderState, SectorState, User } from '../types';
 import { getOrderState, getSectorState, exportOrdersToSQLite, getDirectoryHandle, getWeekRange, exportOrdersToExcel } from '../services/dataService';
@@ -38,6 +40,7 @@ interface OrderTableProps {
   onUpdateManual?: (docNr: string, isManual: boolean) => void;
   onUpdateStopReason?: (docNr: string, sectorId: string, reason: string) => void;
   stopReasonsHierarchy: any[];
+  onArchiveOrder?: (docNr: string, archive: boolean) => void;
 }
 
 const ITEMS_PER_PAGE = 50;
@@ -51,7 +54,7 @@ const getISOWeek = (d: Date) => {
   return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
 };
 
-const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetails, excelHeaders, activeFilter, user, onUpdatePriority, onUpdateManual, onUpdateStopReason, stopReasonsHierarchy }) => {
+const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetails, excelHeaders, activeFilter, user, onUpdatePriority, onUpdateManual, onUpdateStopReason, stopReasonsHierarchy, onArchiveOrder }) => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const deferredSearch = React.useDeferredValue(searchTerm);
   
@@ -63,6 +66,7 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
   const [filterPriority, setFilterPriority] = React.useState('All'); 
   const [filterManual, setFilterManual] = React.useState(false); 
   const [filterHasObservations, setFilterHasObservations] = React.useState(false);
+  const [filterArchived, setFilterArchived] = React.useState<'all' | 'active' | 'archived'>('active');
   
   // Alterado de boolean para Date | null para suportar navegação
   const [filterDate, setFilterDate] = React.useState<Date | null>(null);
@@ -244,6 +248,11 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
 
       const matchesObservations = !filterHasObservations || hasObservations(o);
 
+      // Filtro arquivado
+      let matchesArchived = true;
+      if (filterArchived === 'active') matchesArchived = !o.isArchived;
+      else if (filterArchived === 'archived') matchesArchived = !!o.isArchived;
+
       const search = deferredSearch.toLowerCase().trim();
       const matchesSearch = !search || 
                             (o.docNr || '').toLowerCase().includes(search) || 
@@ -254,13 +263,13 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
                             (o.family || '').toLowerCase().includes(search) ||
                             (o.sizeDesc || '').toLowerCase().includes(search);
       
-      return matchesDocSeries && matchesComercial && matchesReference && matchesStatus && matchesSearch && matchesObservations && matchesWeek && matchesFlags;
+      return matchesDocSeries && matchesComercial && matchesReference && matchesStatus && matchesSearch && matchesObservations && matchesWeek && matchesFlags && matchesArchived;
     });
-  }, [orders, deferredSearch, filterStatus, filterDocSeries, filterComercial, filterReference, filterHasObservations, filterDate, filterPriority, filterManual, activeFilter]);
+  }, [orders, deferredSearch, filterStatus, filterDocSeries, filterComercial, filterReference, filterHasObservations, filterDate, filterPriority, filterManual, activeFilter, filterArchived]);
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [deferredSearch, filterDocSeries, filterComercial, filterReference, filterStatus, filterHasObservations, filterDate, filterPriority, filterManual]);
+  }, [deferredSearch, filterDocSeries, filterComercial, filterReference, filterStatus, filterHasObservations, filterDate, filterPriority, filterManual, filterArchived]);
 
   React.useEffect(() => {
     setFilterComercial('All');
@@ -281,6 +290,7 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
     setFilterManual(false);
     setFilterHasObservations(false);
     setFilterDate(null);
+    setFilterArchived('active');
   };
 
   const toggleHeaderPriorityFilter = () => {
@@ -291,7 +301,7 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
       }
   };
 
-  const hasActiveFilters = searchTerm !== '' || filterDocSeries !== 'All' || filterComercial !== 'All' || filterReference !== 'All' || filterStatus !== 'All' || filterPriority !== 'All' || filterHasObservations || filterDate !== null || filterManual;
+  const hasActiveFilters = searchTerm !== '' || filterDocSeries !== 'All' || filterComercial !== 'All' || filterReference !== 'All' || filterStatus !== 'All' || filterPriority !== 'All' || filterHasObservations || filterDate !== null || filterManual || filterArchived !== 'active';
 
   const handleExport = async () => {
     if (finalFilteredOrders.length === 0) return;
@@ -343,7 +353,7 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
 
         const fileName = `${prefix} ${dateStr} ${timeStr}.xlsx`;
 
-        exportOrdersToExcel(finalFilteredOrders, fileName);
+        exportOrdersToExcel(finalFilteredOrders, excelHeaders, fileName);
         setExcelExportSuccess(true);
         setTimeout(() => setExcelExportSuccess(false), 3000);
     } catch (error) {
@@ -420,6 +430,16 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
                 {filterManual && (
                     <span className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 animate-in fade-in">
                         Filtro: Conf. Manual
+                    </span>
+                )}
+                {filterArchived === 'archived' && (
+                    <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800 animate-in fade-in flex items-center gap-1">
+                        <Archive size={10} /> Arquivadas
+                    </span>
+                )}
+                {filterArchived === 'all' && (
+                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 animate-in fade-in">
+                        A mostrar tudo
                     </span>
                 )}
               </div>
@@ -601,6 +621,19 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
                 </select>
               </div>
 
+              <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 shadow-sm grow md:grow-0">
+                <Archive size={14} className="text-slate-400 shrink-0" />
+                <select
+                  className="bg-transparent outline-none text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer min-w-[110px] w-full md:w-auto"
+                  value={filterArchived}
+                  onChange={(e) => setFilterArchived(e.target.value as 'all' | 'active' | 'archived')}
+                >
+                  <option value="active" className="dark:bg-slate-900">Ativas</option>
+                  <option value="archived" className="dark:bg-slate-900">Arquivadas</option>
+                  <option value="all" className="dark:bg-slate-900">Todas</option>
+                </select>
+              </div>
+
               {/* Botões Mobile */}
               <div className="md:hidden flex gap-2">
                 <button 
@@ -679,7 +712,7 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
                 <tr 
                   key={order.id} 
                   onClick={() => onViewDetails(order)}
-                  className="hover:bg-blue-50 dark:hover:bg-slate-900 transition-colors group cursor-pointer"
+                  className={`hover:bg-blue-50 dark:hover:bg-slate-900 transition-colors group cursor-pointer ${order.isArchived ? 'opacity-50 bg-slate-50 dark:bg-slate-900/50' : ''}`}
                 >
                   <td className="px-6 py-4 align-top">
                     <div className="flex items-start gap-2">
@@ -785,6 +818,22 @@ const OrderTable: React.FC<OrderTableProps> = React.memo(({ orders, onViewDetail
                   <td className="px-6 py-4 align-middle text-center">
                     {getStatusBadge(order)}
                   </td>
+                  {user?.role === 'admin' && onArchiveOrder && (
+                  <td className="px-2 py-4 align-middle text-center" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => {
+                        const action = order.isArchived ? 'desarquivar' : 'arquivar';
+                        if (window.confirm(`Tem a certeza que deseja ${action} a encomenda ${order.docNr}?`)) {
+                          onArchiveOrder(order.docNr, !order.isArchived);
+                        }
+                      }}
+                      className={`p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 ${order.isArchived ? 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20' : 'text-slate-300 dark:text-slate-600 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}
+                      title={order.isArchived ? `Desarquivar (arquivado por ${order.archivedBy})` : 'Arquivar encomenda'}
+                    >
+                      {order.isArchived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+                    </button>
+                  </td>
+                  )}
                 </tr>
               ))}
               {paginatedOrders.length === 0 && (

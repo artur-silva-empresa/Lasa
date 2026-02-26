@@ -4,9 +4,10 @@ import { Clock, ChevronRight, Plus, Edit2, Trash2, Check, X, GripVertical } from
 interface StopReasonsProps {
   hierarchy: any[];
   onUpdateHierarchy: (newHierarchy: any[]) => void;
+  embedded?: boolean;
 }
 
-const StopReasons: React.FC<StopReasonsProps> = ({ hierarchy, onUpdateHierarchy }) => {
+const StopReasons: React.FC<StopReasonsProps> = ({ hierarchy, onUpdateHierarchy, embedded = false }) => {
   const [editingCategoryIndex, setEditingCategoryIndex] = React.useState<number | null>(null);
   const [editCategoryName, setEditCategoryName] = React.useState('');
   
@@ -76,7 +77,8 @@ const StopReasons: React.FC<StopReasonsProps> = ({ hierarchy, onUpdateHierarchy 
   };
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500 overflow-y-auto h-full pb-32">
+    <div className={`${embedded ? 'p-0' : 'p-6'} space-y-6 animate-in fade-in duration-500 ${embedded ? '' : 'overflow-y-auto h-full'} pb-8`}>
+      {!embedded && (
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-900/20">
@@ -96,6 +98,19 @@ const StopReasons: React.FC<StopReasonsProps> = ({ hierarchy, onUpdateHierarchy 
           Nova Categoria
         </button>
       </div>
+      )}
+      {embedded && (
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Gestão de motivos predefinidos para paragens de produção</p>
+          <button 
+            onClick={() => setIsAddingCategory(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all shadow-md active:scale-95"
+          >
+            <Plus size={18} />
+            Nova Categoria
+          </button>
+        </div>
+      )}
 
       {isAddingCategory && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-2xl mb-8 animate-in slide-in-from-top-4 duration-300">

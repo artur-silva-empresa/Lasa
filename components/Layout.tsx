@@ -173,21 +173,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, on
                         </button>
                       </li>
                     )}
-                    {user?.permissions?.stopReasons !== 'none' && (
-                      <li>
-                        <button
-                          onClick={() => setActiveView('stop-reasons')}
-                          className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-sm ${
-                            activeView === 'stop-reasons'
-                              ? 'text-blue-400 bg-slate-800/50 font-bold'
-                              : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'
-                          }`}
-                        >
-                          <Clock size={16} />
-                          <span>Motivos de Paragens</span>
-                        </button>
-                      </li>
-                    )}
                   </ul>
                 )}
               </li>

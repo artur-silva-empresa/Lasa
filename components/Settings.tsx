@@ -1,9 +1,11 @@
 
 import React from 'react';
-import { FolderInput, FolderOutput, Save, FolderOpen, AlertCircle, CheckCircle, Moon, Sun, Trash2, Users, ShieldCheck, UserPlus, Key, Eye, EyeOff, User as UserIcon, Settings as SettingsIcon, Package, Clock, Layers, ChevronRight, X } from 'lucide-react';
+import { FolderInput, FolderOutput, Save, FolderOpen, AlertCircle, CheckCircle, Moon, Sun, Trash2, Users, ShieldCheck, UserPlus, Key, Eye, EyeOff, User as UserIcon, Settings as SettingsIcon, Package, Clock, Layers, ChevronRight, X, AlertTriangle } from 'lucide-react';
 import { saveDirectoryHandle, getDirectoryHandle, verifyPermission, hashPassword } from '../services/dataService';
-import { User, PermissionLevel, UserPermissions } from '../types';
+import { User, PermissionLevel, UserPermissions, Order } from '../types';
 import { SECTORS } from '../constants';
+import StopReasons from './StopReasons';
+import ExportableColumns from './ExportableColumns';
 
 interface SettingsProps {
   currentTheme?: 'light' | 'dark';
@@ -12,10 +14,13 @@ interface SettingsProps {
   users?: User[];
   onSaveUser?: (user: User) => Promise<void>;
   onDeleteUser?: (userId: string) => Promise<void>;
+  stopReasonsHierarchy?: any[];
+  onUpdateStopReasonsHierarchy?: (newHierarchy: any[]) => void;
+  orders?: Order[];
 }
 
-const Settings: React.FC<SettingsProps> = ({ currentTheme, onToggleTheme, onResetData, users = [], onSaveUser, onDeleteUser }) => {
-  const [activeTab, setActiveTab] = React.useState<'general' | 'users'>('general');
+const Settings: React.FC<SettingsProps> = ({ currentTheme, onToggleTheme, onResetData, users = [], onSaveUser, onDeleteUser, stopReasonsHierarchy = [], onUpdateStopReasonsHierarchy, orders = [] }) => {
+  const [activeTab, setActiveTab] = React.useState<'general' | 'users' | 'stop-reasons' | 'export-columns'>('general');
   const [exportHandle, setExportHandle] = React.useState<any>(null);
   const [importHandle, setImportHandle] = React.useState<any>(null);
   const [statusMsg, setStatusMsg] = React.useState('');
@@ -73,6 +78,13 @@ const Settings: React.FC<SettingsProps> = ({ currentTheme, onToggleTheme, onRese
     }
   };
 
+  const tabs = [
+    { id: 'general', label: 'Geral' },
+    { id: 'users', label: 'Utilizadores' },
+    { id: 'stop-reasons', label: 'Motivos de Paragem' },
+    { id: 'export-columns', label: 'Tabelas Editáveis' },
+  ] as const;
+
   return (
     <div className="h-full overflow-y-auto p-4 md:p-8 animate-in fade-in duration-500">
       <div className="max-w-3xl mx-auto space-y-8">
@@ -82,19 +94,16 @@ const Settings: React.FC<SettingsProps> = ({ currentTheme, onToggleTheme, onRese
             <p className="text-sm text-slate-500 dark:text-slate-400">Gestão do sistema, utilizadores e preferências.</p>
           </div>
 
-          <div className="flex bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl w-fit">
-            <button
-                onClick={() => setActiveTab('general')}
-                className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${activeTab === 'general' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-            >
-                Geral
-            </button>
-            <button
-                onClick={() => setActiveTab('users')}
-                className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${activeTab === 'users' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-            >
-                Utilizadores
-            </button>
+          <div className="flex bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-xl w-fit flex-wrap gap-1">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -104,7 +113,8 @@ const Settings: React.FC<SettingsProps> = ({ currentTheme, onToggleTheme, onRese
           </div>
         )}
         
-        {activeTab === 'general' ? (
+        {/* ===== ABA GERAL ===== */}
+        {activeTab === 'general' && (
         <>
         {/* Appearance Settings */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -239,7 +249,10 @@ const Settings: React.FC<SettingsProps> = ({ currentTheme, onToggleTheme, onRese
           </p>
         </div>
         </>
-        ) : (
+        )}
+
+        {/* ===== ABA UTILIZADORES ===== */}
+        {activeTab === 'users' && (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -308,7 +321,7 @@ const Settings: React.FC<SettingsProps> = ({ currentTheme, onToggleTheme, onRese
                                     setFormData({
                                         username: user.username,
                                         name: user.name,
-                                        password: '', // Não mostrar password antiga
+                                        password: '',
                                         role: user.role,
                                         permissions: user.permissions
                                     });
@@ -335,6 +348,22 @@ const Settings: React.FC<SettingsProps> = ({ currentTheme, onToggleTheme, onRese
                 ))}
             </div>
         </div>
+        )}
+
+        {/* ===== ABA MOTIVOS DE PARAGEM ===== */}
+        {activeTab === 'stop-reasons' && (
+          <div className="-mx-4 md:-mx-8 -mt-8">
+            <StopReasons
+              hierarchy={stopReasonsHierarchy}
+              onUpdateHierarchy={onUpdateStopReasonsHierarchy || (() => {})}
+              embedded={true}
+            />
+          </div>
+        )}
+
+        {/* ===== ABA TABELAS EDITÁVEIS ===== */}
+        {activeTab === 'export-columns' && (
+          <ExportableColumns orders={orders} />
         )}
 
         <div className="text-right pt-4 pb-2 pr-2">
@@ -428,7 +457,6 @@ const Settings: React.FC<SettingsProps> = ({ currentTheme, onToggleTheme, onRese
                         </div>
 
                         <div className="space-y-4">
-                            {/* Páginas Gerais */}
                             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
                                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Páginas Principais</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
@@ -436,7 +464,6 @@ const Settings: React.FC<SettingsProps> = ({ currentTheme, onToggleTheme, onRese
                                         { id: 'dashboard', label: 'Dashboard', icon: Package },
                                         { id: 'orders', label: 'Encomendas', icon: Package },
                                         { id: 'timeline', label: 'Timeline', icon: Clock },
-                                        { id: 'stopReasons', label: 'Motivos de Paragem', icon: Clock },
                                         { id: 'config', label: 'Configurações', icon: SettingsIcon },
                                     ].map(page => (
                                         <div key={page.id} className="flex items-center justify-between gap-4">
@@ -470,7 +497,6 @@ const Settings: React.FC<SettingsProps> = ({ currentTheme, onToggleTheme, onRese
                                 </div>
                             </div>
 
-                            {/* Setores */}
                             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
                                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Acesso por Sector</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
