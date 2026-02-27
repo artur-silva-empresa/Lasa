@@ -282,7 +282,7 @@ const ExportableColumns: React.FC<ExportableColumnsProps> = ({ orders }) => {
                     </button>
                     <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex-1">{groupName}</span>
                     <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mr-1">
-                      {cols.filter(c => selectedKeys.includes(c.key)).length}/{cols.length}
+                      {(cols as ExportColumnDef[]).filter(c => selectedKeys.includes(c.key)).length}/{(cols as ExportColumnDef[]).length}
                     </span>
                     <button
                       onClick={() => toggleGroupCollapsed(groupName)}
@@ -295,7 +295,7 @@ const ExportableColumns: React.FC<ExportableColumnsProps> = ({ orders }) => {
                   {/* Colunas do grupo */}
                   {!collapsed && (
                     <div className="px-2 py-1.5 space-y-0.5">
-                      {cols.map(col => {
+                      {(cols as ExportColumnDef[]).map(col => {
                         const isSelected = selectedKeys.includes(col.key);
                         return (
                           <button

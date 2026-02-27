@@ -128,7 +128,7 @@ const StoppageReasonsPage: React.FC = () => {
         )}
 
         <div className="grid grid-cols-1 gap-6">
-          {Object.entries(groupedReasons).map(([type, typeReasons]) => (
+          {(Object.entries(groupedReasons) as [string, StoppageReason[]][]).map(([type, typeReasons]) => (
             <div key={type} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
               <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
                 <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">{type}</h3>
