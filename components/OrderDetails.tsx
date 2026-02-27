@@ -69,7 +69,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
   return (
     <div className="bg-[#f8fafc] dark:bg-slate-950 w-full h-full flex flex-col overflow-hidden">
         {/* Header matching LAYOUT.png */}
-        <header className="px-8 py-6 flex justify-between items-start shrink-0">
+        <header className="px-8 py-4 flex justify-between items-start shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
                 <div className="text-blue-600 dark:text-blue-400">
@@ -90,12 +90,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
         </header>
 
         {/* 3-Column Content Layout */}
-        <div className="flex-1 flex overflow-hidden px-8 pb-6 gap-8">
+        <div className="flex-1 flex overflow-hidden px-8 pb-4 gap-8">
 
             {/* Column 1: FLUXO DE PRODUÇÃO (Vertical) */}
-            <aside className="w-32 shrink-0 flex flex-col items-center">
-                <h3 className="text-[11px] font-black text-[#94a3b8] dark:text-slate-500 uppercase tracking-widest mb-6 w-full text-center">Fluxo de Produção</h3>
-                <div className="flex flex-col items-center gap-8 w-full overflow-y-auto pr-2 custom-scrollbar">
+            <aside className="w-28 shrink-0 flex flex-col items-center">
+                <h3 className="text-[10px] font-black text-[#94a3b8] dark:text-slate-500 uppercase tracking-widest mb-4 w-full text-center">Fluxo de Produção</h3>
+                <div className="flex flex-col items-center gap-3 w-full overflow-y-auto pr-2 custom-scrollbar">
                     {SECTORS.map((s) => {
                         const sectorState = getSectorState(order, s.id);
                         const producedQty = getSectorProducedQty(s.id);
@@ -103,25 +103,25 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
                         const isCompleted = sectorState === SectorState.COMPLETED || producedQty >= order.qtyRequested;
 
                         return (
-                            <div key={s.id} className="flex flex-col items-center gap-2 group">
+                            <div key={s.id} className="flex flex-col items-center gap-1.5 group">
                                 <button
                                     onClick={() => handleSectorClick(s)}
-                                    className={`w-14 h-14 rounded-2xl flex items-center justify-center relative transition-all active:scale-95 shadow-lg ${isCompleted ? 'bg-[#10b981]' : 'bg-slate-200 dark:bg-slate-800'}`}
+                                    className={`w-11 h-11 rounded-xl flex items-center justify-center relative transition-all active:scale-95 shadow-md ${isCompleted ? 'bg-[#10b981]' : 'bg-slate-200 dark:bg-slate-800'}`}
                                 >
-                                    <SectorIcon size={24} className="text-white" />
+                                    <SectorIcon size={18} className="text-white" />
                                     {isCompleted && (
-                                        <div className="absolute -top-1.5 -right-1.5 bg-white dark:bg-slate-900 rounded-full p-0.5 shadow-md">
-                                            <CheckCircle size={16} className="text-[#10b981]" />
+                                        <div className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 rounded-full p-0.5 shadow-sm">
+                                            <CheckCircle size={12} className="text-[#10b981]" />
                                         </div>
                                     )}
                                 </button>
 
-                                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2 py-1 rounded-md shadow-sm">
-                                    <span className="text-[11px] font-bold text-slate-400">{order.qtyRequested.toLocaleString('pt-PT')} / </span>
-                                    <span className="text-[11px] font-black text-[#10b981]">{producedQty.toLocaleString('pt-PT')}</span>
+                                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-1.5 py-0.5 rounded shadow-sm">
+                                    <span className="text-[9px] font-bold text-slate-400">{order.qtyRequested.toLocaleString('pt-PT')} / </span>
+                                    <span className="text-[9px] font-black text-[#10b981]">{producedQty.toLocaleString('pt-PT')}</span>
                                 </div>
 
-                                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter text-center">
+                                <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter text-center leading-none">
                                     {s.name}
                                 </span>
                             </div>
@@ -148,12 +148,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
                         return (
                             <div
                                 key={sector.id}
-                                className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow group"
+                                className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow group"
                             >
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400">
-                                            <SectorIcon size={20} />
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+                                            <SectorIcon size={16} />
                                         </div>
                                         <div>
                                             <h4 className="font-black text-[#2563eb] dark:text-blue-400 text-sm uppercase tracking-tight">{sector.name}</h4>
