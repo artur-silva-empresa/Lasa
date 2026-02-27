@@ -92,95 +92,88 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
         {/* 3-Column Content Layout */}
         <div className="flex-1 flex overflow-hidden px-6 pb-2 gap-6">
 
-            {/* Column 1: FLUXO DE PRODUÇÃO (Vertical) */}
-            <aside className="w-24 shrink-0 flex flex-col items-center">
-                <h3 className="text-[9px] font-black text-[#94a3b8] dark:text-slate-500 uppercase tracking-widest mb-3 w-full text-center">Fluxo de Produção</h3>
-                <div className="flex-1 flex flex-col items-center gap-2 w-full overflow-y-auto pr-1 custom-scrollbar">
-                    {SECTORS.map((s) => {
-                        const sectorState = getSectorState(order, s.id);
-                        const producedQty = getSectorProducedQty(s.id);
-                        const SectorIcon = s.icon;
-                        const isCompleted = sectorState === SectorState.COMPLETED || producedQty >= order.qtyRequested;
-
-                        return (
-                            <div key={s.id} className="flex flex-col items-center gap-1 group shrink-0">
-                                <button
-                                    onClick={() => handleSectorClick(s)}
-                                    className={`w-9 h-9 rounded-lg flex items-center justify-center relative transition-all active:scale-95 shadow-sm ${isCompleted ? 'bg-[#10b981]' : 'bg-slate-200 dark:bg-slate-800'}`}
-                                >
-                                    <SectorIcon size={16} className="text-white" />
-                                    {isCompleted && (
-                                        <div className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 rounded-full p-0.5 shadow-xs">
-                                            <CheckCircle size={10} className="text-[#10b981]" />
-                                        </div>
-                                    )}
-                                </button>
-
-                                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-1 py-0 rounded-sm shadow-xs">
-                                    <span className="text-[8px] font-bold text-slate-400">{order.qtyRequested.toLocaleString('pt-PT')} / </span>
-                                    <span className="text-[8px] font-black text-[#10b981]">{producedQty.toLocaleString('pt-PT')}</span>
-                                </div>
-
-                                <span className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter text-center leading-none">
-                                    {s.name}
-                                </span>
-                            </div>
-                        );
-                    })}
-                </div>
-            </aside>
-
-            {/* Column 2: Histórico de Observações (Center) */}
+            {/* Combined Column 1 & 2: FLUXO + OBS (Vertical Scrollable) */}
             <main className="flex-1 flex flex-col min-w-0">
-                <div className="flex items-center justify-center mb-3">
-                    <h3 className="text-xs font-black text-[#1e293b] dark:text-slate-200 uppercase tracking-tight">Histórico de Observações</h3>
+                <div className="grid grid-cols-[96px_1fr] gap-6 mb-3 px-2">
+                    <h3 className="text-[9px] font-black text-[#94a3b8] dark:text-slate-500 uppercase tracking-widest text-center">Fluxo de Produção</h3>
+                    <h3 className="text-xs font-black text-[#1e293b] dark:text-slate-200 uppercase tracking-tight text-center">Histórico de Observações</h3>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pr-4 space-y-3 custom-scrollbar">
-                    {SECTORS.map(sector => {
-                        const obs = order.sectorObservations?.[sector.id];
-                        const reason = order.sectorStopReasons?.[sector.id];
-                        const SectorIcon = sector.icon;
-                        const sectorDate = getSectorDate(sector.id);
-                        const predDate = order.sectorPredictedDates?.[sector.id];
-                        const hasWritePerm = user?.permissions?.sectors?.[sector.id] === 'write';
+                <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
+                    <div className="space-y-6 pb-4">
+                        {SECTORS.map((s) => {
+                            const sectorState = getSectorState(order, s.id);
+                            const producedQty = getSectorProducedQty(s.id);
+                            const SectorIcon = s.icon;
+                            const isCompleted = sectorState === SectorState.COMPLETED || producedQty >= order.qtyRequested;
 
-                        return (
-                            <div
-                                key={sector.id}
-                                className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow group"
-                            >
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
-                                            <SectorIcon size={16} />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-black text-[#2563eb] dark:text-blue-400 text-sm uppercase tracking-tight">{sector.name}</h4>
-                                            {reason && (
-                                                <div className="flex items-center gap-1.5 mt-0.5 text-rose-500 font-bold text-[10px] uppercase">
-                                                    <AlertCircle size={12} /> {reason}
+                            const obs = order.sectorObservations?.[s.id];
+                            const reason = order.sectorStopReasons?.[s.id];
+                            const sectorDate = getSectorDate(s.id);
+                            const predDate = order.sectorPredictedDates?.[s.id];
+                            const hasWritePerm = user?.permissions?.sectors?.[s.id] === 'write';
+
+                            return (
+                                <div key={s.id} className="grid grid-cols-[96px_1fr] gap-6 items-start">
+                                    {/* Flow Icon Column */}
+                                    <div className="flex flex-col items-center gap-1 group shrink-0">
+                                        <button
+                                            onClick={() => handleSectorClick(s)}
+                                            className={`w-9 h-9 rounded-lg flex items-center justify-center relative transition-all active:scale-95 shadow-sm ${isCompleted ? 'bg-[#10b981]' : 'bg-slate-200 dark:bg-slate-800'}`}
+                                        >
+                                            <SectorIcon size={16} className="text-white" />
+                                            {isCompleted && (
+                                                <div className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 rounded-full p-0.5 shadow-xs">
+                                                    <CheckCircle size={10} className="text-[#10b981]" />
                                                 </div>
                                             )}
+                                        </button>
+
+                                        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-1 py-0 rounded-sm shadow-xs whitespace-nowrap">
+                                            <span className="text-[8px] font-bold text-slate-400">{order.qtyRequested.toLocaleString('pt-PT')} / </span>
+                                            <span className="text-[8px] font-black text-[#10b981]">{producedQty.toLocaleString('pt-PT')}</span>
+                                        </div>
+
+                                        <span className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter text-center leading-none">
+                                            {s.name}
+                                        </span>
+                                    </div>
+
+                                    {/* Observation Card Column */}
+                                    <div className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow group relative">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+                                                    <SectorIcon size={14} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-black text-[#2563eb] dark:text-blue-400 text-[10px] uppercase tracking-tight">{s.name}</h4>
+                                                    {reason && (
+                                                        <div className="flex items-center gap-1.5 mt-0.5 text-rose-500 font-bold text-[8px] uppercase">
+                                                            <AlertCircle size={10} /> {reason}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="text-right flex flex-col gap-0.5">
+                                                {sectorDate && <span className="text-[8px] font-bold text-slate-400 uppercase">Data Sector: {formatDate(sectorDate)}</span>}
+                                                {predDate && <span className="text-[8px] font-black text-rose-500 uppercase">Data Prevista: {formatDate(predDate)}</span>}
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            onClick={() => hasWritePerm && handleSectorClick(s)}
+                                            className={`text-sm py-2 px-1 rounded-lg transition-colors ${hasWritePerm ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50' : ''}`}
+                                        >
+                                            <p className={`whitespace-pre-wrap break-words leading-relaxed ${obs ? 'text-slate-600 dark:text-slate-300 font-medium' : 'text-slate-400 dark:text-slate-600 italic'}`}>
+                                                {obs || (hasWritePerm ? 'Sem observações (Clique para editar)' : 'Sem observações')}
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="text-right flex flex-col gap-0.5">
-                                        {sectorDate && <span className="text-[10px] font-bold text-slate-400 uppercase">Data Sector: {formatDate(sectorDate)}</span>}
-                                        {predDate && <span className="text-[10px] font-black text-rose-500 uppercase">Data Prevista: {formatDate(predDate)}</span>}
-                                    </div>
                                 </div>
-
-                                <div
-                                    onClick={() => hasWritePerm && handleSectorClick(sector)}
-                                    className={`text-sm py-2 px-1 rounded-lg transition-colors ${hasWritePerm ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50' : ''}`}
-                                >
-                                    <p className={`whitespace-pre-wrap break-words leading-relaxed ${obs ? 'text-slate-600 dark:text-slate-300 font-medium' : 'text-slate-400 dark:text-slate-600 italic'}`}>
-                                        {obs || (hasWritePerm ? 'Sem observações (Clique para editar)' : 'Sem observações')}
-                                    </p>
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
 
                 {/* Edit Observation Overlay/Modal-like area */}
