@@ -69,8 +69,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
   return (
     <div className="bg-[#f8fafc] dark:bg-slate-950 w-full h-full flex flex-col overflow-hidden">
         {/* Header matching LAYOUT.png */}
-        <header className="px-8 py-4 flex justify-between items-start shrink-0">
-          <div className="space-y-1">
+        <header className="px-8 py-3 flex justify-between items-start shrink-0">
+          <div className="space-y-0.5">
             <div className="flex items-center gap-2">
                 <div className="text-blue-600 dark:text-blue-400">
                     <User size={20} strokeWidth={2.5} />
@@ -80,7 +80,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
                     <span className="text-[#94a3b8] font-bold text-xl">{order.docNr}</span>
                 </h1>
             </div>
-            <div className="text-[#64748b] dark:text-slate-400 font-bold text-lg flex items-center gap-2 pl-7">
+            <div className="text-[#64748b] dark:text-slate-400 font-bold text-base flex items-center gap-2 pl-7">
                 {order.reference} - {order.colorDesc} <span className="text-[#cbd5e1]">•</span> {order.sizeDesc || order.size}
             </div>
           </div>
@@ -90,12 +90,12 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
         </header>
 
         {/* 3-Column Content Layout */}
-        <div className="flex-1 flex overflow-hidden px-8 pb-4 gap-8">
+        <div className="flex-1 flex overflow-hidden px-6 pb-2 gap-6">
 
             {/* Column 1: FLUXO DE PRODUÇÃO (Vertical) */}
-            <aside className="w-28 shrink-0 flex flex-col items-center">
-                <h3 className="text-[10px] font-black text-[#94a3b8] dark:text-slate-500 uppercase tracking-widest mb-4 w-full text-center">Fluxo de Produção</h3>
-                <div className="flex flex-col items-center gap-3 w-full overflow-y-auto pr-2 custom-scrollbar">
+            <aside className="w-24 shrink-0 flex flex-col items-center">
+                <h3 className="text-[9px] font-black text-[#94a3b8] dark:text-slate-500 uppercase tracking-widest mb-3 w-full text-center">Fluxo de Produção</h3>
+                <div className="flex-1 flex flex-col items-center gap-2 w-full overflow-y-auto pr-1 custom-scrollbar">
                     {SECTORS.map((s) => {
                         const sectorState = getSectorState(order, s.id);
                         const producedQty = getSectorProducedQty(s.id);
@@ -103,25 +103,25 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
                         const isCompleted = sectorState === SectorState.COMPLETED || producedQty >= order.qtyRequested;
 
                         return (
-                            <div key={s.id} className="flex flex-col items-center gap-1.5 group">
+                            <div key={s.id} className="flex flex-col items-center gap-1 group shrink-0">
                                 <button
                                     onClick={() => handleSectorClick(s)}
-                                    className={`w-11 h-11 rounded-xl flex items-center justify-center relative transition-all active:scale-95 shadow-md ${isCompleted ? 'bg-[#10b981]' : 'bg-slate-200 dark:bg-slate-800'}`}
+                                    className={`w-9 h-9 rounded-lg flex items-center justify-center relative transition-all active:scale-95 shadow-sm ${isCompleted ? 'bg-[#10b981]' : 'bg-slate-200 dark:bg-slate-800'}`}
                                 >
-                                    <SectorIcon size={18} className="text-white" />
+                                    <SectorIcon size={16} className="text-white" />
                                     {isCompleted && (
-                                        <div className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 rounded-full p-0.5 shadow-sm">
-                                            <CheckCircle size={12} className="text-[#10b981]" />
+                                        <div className="absolute -top-1 -right-1 bg-white dark:bg-slate-900 rounded-full p-0.5 shadow-xs">
+                                            <CheckCircle size={10} className="text-[#10b981]" />
                                         </div>
                                     )}
                                 </button>
 
-                                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-1.5 py-0.5 rounded shadow-sm">
-                                    <span className="text-[9px] font-bold text-slate-400">{order.qtyRequested.toLocaleString('pt-PT')} / </span>
-                                    <span className="text-[9px] font-black text-[#10b981]">{producedQty.toLocaleString('pt-PT')}</span>
+                                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-1 py-0 rounded-sm shadow-xs">
+                                    <span className="text-[8px] font-bold text-slate-400">{order.qtyRequested.toLocaleString('pt-PT')} / </span>
+                                    <span className="text-[8px] font-black text-[#10b981]">{producedQty.toLocaleString('pt-PT')}</span>
                                 </div>
 
-                                <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter text-center leading-none">
+                                <span className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter text-center leading-none">
                                     {s.name}
                                 </span>
                             </div>
@@ -132,11 +132,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onClose, onUpdateOrd
 
             {/* Column 2: Histórico de Observações (Center) */}
             <main className="flex-1 flex flex-col min-w-0">
-                <div className="flex items-center justify-center mb-6">
-                    <h3 className="text-sm font-black text-[#1e293b] dark:text-slate-200 uppercase tracking-tight">Histórico de Observações</h3>
+                <div className="flex items-center justify-center mb-3">
+                    <h3 className="text-xs font-black text-[#1e293b] dark:text-slate-200 uppercase tracking-tight">Histórico de Observações</h3>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pr-4 space-y-4 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto pr-4 space-y-3 custom-scrollbar">
                     {SECTORS.map(sector => {
                         const obs = order.sectorObservations?.[sector.id];
                         const reason = order.sectorStopReasons?.[sector.id];
