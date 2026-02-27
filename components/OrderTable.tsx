@@ -19,7 +19,8 @@ import {
   FileSpreadsheet,
   X,
   Archive,
-  ArchiveRestore
+  ArchiveRestore,
+  Download
 } from 'lucide-react';
 import { Order, OrderState, SectorState, User } from '../types';
 import { getOrderState, getSectorState, exportOrdersToSQLite, getDirectoryHandle, getWeekRange, exportOrdersToExcel, loadExportColumnsConfig, exportCustomColumns, DEFAULT_SELECTED_COLUMNS } from '../services/dataService';
