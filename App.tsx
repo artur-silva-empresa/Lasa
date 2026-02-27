@@ -658,6 +658,8 @@ const App: React.FC = () => {
         alertCount={alertCount}
         user={currentUser}
         onLogout={() => setCurrentUser(null)}
+        orders={orders}
+        onViewDetails={handleViewDetails}
       >
         {renderContent()}
       </Layout>

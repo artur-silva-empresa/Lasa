@@ -13,10 +13,13 @@ import {
   LogOut,
   Layers,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle,
+  Calendar
 } from 'lucide-react';
-import { User } from '../types';
+import { User, Order } from '../types';
 import { SECTORS } from '../constants';
+import { formatDate } from '../utils/formatters';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -26,12 +29,15 @@ interface LayoutProps {
   alertCount: number;
   user: User | null;
   onLogout: () => void;
+  orders: Order[];
+  onViewDetails: (order: Order) => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, onImportClick, alertCount, user, onLogout }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, onImportClick, alertCount, user, onLogout, orders, onViewDetails }) => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(window.innerWidth > 1024);
   const [isSectorsOpen, setIsSectorsOpen] = React.useState(false);
   const [isConfigOpen, setIsConfigOpen] = React.useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
 
   // Itens dinâmicos baseados em permissões
   const menuItems = React.useMemo(() => {
@@ -209,9 +215,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, on
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4 relative">
             <button
-              className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400"
+              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              className={`relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors ${isNotificationsOpen ? 'bg-slate-100 dark:bg-slate-800 text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}
               title={`${alertCount} Notificações (Atrasos e Datas Pendentes)`}
             >
               <Bell size={20} />
@@ -221,6 +228,87 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setActiveView, on
                 </span>
               )}
             </button>
+
+            {/* Notifications Dropdown */}
+            {isNotificationsOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsNotificationsOpen(false)}
+                />
+                <div className="absolute top-full right-0 mt-2 w-80 md:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                    <h3 className="font-black text-xs uppercase tracking-widest text-slate-500">Notificações</h3>
+                    <span className="bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      {alertCount} alertas
+                    </span>
+                  </div>
+
+                  <div className="max-h-[400px] overflow-y-auto overflow-x-hidden py-2">
+                    {orders.filter(o => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const isLate = o.requestedDate && o.requestedDate < today && o.qtyOpen > 0;
+                      const hasPending = o.sectorPredictedDatesPending && Object.values(o.sectorPredictedDatesPending).some(v => v === true);
+                      return isLate || hasPending;
+                    }).map(order => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const isLate = order.requestedDate && order.requestedDate < today && order.qtyOpen > 0;
+                      const pendingSectors = Object.entries(order.sectorPredictedDatesPending || {})
+                        .filter(([_, v]) => v === true)
+                        .map(([id, _]) => SECTORS.find(s => s.id === id)?.name || id);
+
+                      return (
+                        <button
+                          key={order.id}
+                          onClick={() => {
+                            onViewDetails(order);
+                            setIsNotificationsOpen(false);
+                          }}
+                          className="w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0 group"
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-bold text-sm text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                              {order.clientName}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400">{order.docNr}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2 truncate">
+                            {order.reference} • {order.colorDesc}
+                          </p>
+
+                          <div className="flex flex-wrap gap-2">
+                            {isLate && (
+                              <div className="flex items-center gap-1 text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 px-2 py-0.5 rounded-md">
+                                <AlertTriangle size={10} />
+                                <span className="text-[10px] font-black uppercase tracking-tighter">Entrega Atrasada</span>
+                              </div>
+                            )}
+                            {pendingSectors.length > 0 && (
+                              <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-md">
+                                <Calendar size={10} />
+                                <span className="text-[10px] font-black uppercase tracking-tighter">
+                                  Validar: {pendingSectors.join(', ')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {alertCount === 0 && (
+                      <div className="p-8 text-center">
+                        <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                          <Bell size={20} />
+                        </div>
+                        <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Sem notificações pendentes.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
             
             <div className="pl-2 md:pl-4 border-l border-slate-200 dark:border-slate-700">
               <button 

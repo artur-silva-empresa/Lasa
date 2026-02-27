@@ -125,6 +125,19 @@ const SectorOrderTable: React.FC<SectorOrderTableProps> = ({ orders, sector, onV
     setEditingId(null);
   };
 
+  const handleQuickValidate = (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedPending = {
+        ...(order.sectorPredictedDatesPending || {})
+    };
+    delete updatedPending[sector.id];
+
+    onUpdateOrder({
+        ...order,
+        sectorPredictedDatesPending: updatedPending
+    });
+  };
+
   return (
     <div className="flex flex-col h-full animate-in slide-in-from-bottom-4 duration-500">
       {/* Header / Toolbar */}
@@ -164,9 +177,9 @@ const SectorOrderTable: React.FC<SectorOrderTableProps> = ({ orders, sector, onV
               <th className="px-4 py-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Medida / Família</th>
               <th className="px-4 py-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Qtd. Ped / Prod</th>
               <th className="px-4 py-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Data Saída</th>
-              <th className="px-4 py-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[15%]">Observações</th>
-              <th className="px-4 py-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center w-[10%]">Classificação</th>
               <th className="px-4 py-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center w-[10%]">Data Prevista</th>
+              <th className="px-4 py-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center w-[10%]">Classificação</th>
+              <th className="px-4 py-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest w-[15%]">Observações</th>
               <th className="px-2 py-3 w-[50px]"></th>
             </tr>
           </thead>
@@ -207,20 +220,37 @@ const SectorOrderTable: React.FC<SectorOrderTableProps> = ({ orders, sector, onV
                     {formatDate(exitDate)}
                   </td>
                   
-                  {/* Editable Observations */}
-                  <td className="px-4 py-3 align-top" onClick={e => e.stopPropagation()}>
+                  {/* Editable Predicted Date */}
+                  <td className="px-4 py-3 align-top text-center" onClick={e => e.stopPropagation()}>
                     {isEditing ? (
-                        <textarea
-                            value={editObs}
-                            onChange={(e) => setEditObs(e.target.value)}
-                            className="w-full text-xs p-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-                            rows={2}
-                            placeholder="Adicionar observação..."
+                        <input
+                            type="date"
+                            value={editDate}
+                            onChange={(e) => setEditDate(e.target.value)}
+                            className="w-full text-xs p-1 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-white"
                         />
                     ) : (
-                        <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap line-clamp-2" title={obs}>
-                            {obs || '-'}
-                        </p>
+                        <div className="flex flex-col items-center gap-1">
+                            <span className={`text-xs font-bold ${order.sectorPredictedDatesPending?.[sector.id] ? 'text-orange-500 animate-pulse' : (predictedDate ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400')}`}>
+                                {predictedDate ? formatDate(predictedDate) : '-'}
+                            </span>
+                            {order.sectorPredictedDatesPending?.[sector.id] && (
+                                <div className="flex flex-col items-center gap-1">
+                                    <span className="text-[8px] font-black text-orange-500 uppercase flex items-center gap-0.5">
+                                        <AlertCircle size={8} /> Pendente
+                                    </span>
+                                    {canEdit && (
+                                        <button
+                                            onClick={(e) => handleQuickValidate(order, e)}
+                                            className="bg-emerald-500 hover:bg-emerald-600 text-white p-0.5 rounded-full shadow-sm transition-all active:scale-90"
+                                            title="Validar Data"
+                                        >
+                                            <Check size={10} strokeWidth={4} />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     )}
                   </td>
 
@@ -237,26 +267,20 @@ const SectorOrderTable: React.FC<SectorOrderTableProps> = ({ orders, sector, onV
                     />
                   </td>
 
-                  {/* Editable Predicted Date */}
-                  <td className="px-4 py-3 align-top text-center" onClick={e => e.stopPropagation()}>
+                  {/* Editable Observations */}
+                  <td className="px-4 py-3 align-top" onClick={e => e.stopPropagation()}>
                     {isEditing ? (
-                        <input
-                            type="date"
-                            value={editDate}
-                            onChange={(e) => setEditDate(e.target.value)}
-                            className="w-full text-xs p-1 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                        <textarea
+                            value={editObs}
+                            onChange={(e) => setEditObs(e.target.value)}
+                            className="w-full text-xs p-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                            rows={2}
+                            placeholder="Adicionar observação..."
                         />
                     ) : (
-                        <div className="flex flex-col items-center gap-1">
-                            <span className={`text-xs font-bold ${order.sectorPredictedDatesPending?.[sector.id] ? 'text-orange-500 animate-pulse' : (predictedDate ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400')}`}>
-                                {predictedDate ? formatDate(predictedDate) : '-'}
-                            </span>
-                            {order.sectorPredictedDatesPending?.[sector.id] && (
-                                <span className="text-[8px] font-black text-orange-500 uppercase flex items-center gap-0.5">
-                                    <AlertCircle size={8} /> Pendente
-                                </span>
-                            )}
-                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap line-clamp-2" title={obs}>
+                            {obs || '-'}
+                        </p>
                     )}
                   </td>
 
