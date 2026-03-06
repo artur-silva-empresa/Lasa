@@ -7,7 +7,7 @@ import { SECTORS } from '../constants';
 
 // --- PERSISTÊNCIA (IndexedDB) ---
 const DB_NAME = 'TexFlowData';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const STORE_HANDLES = 'handles';
 const STORE_ORDERS = 'orders';
 const STORE_HEADERS = 'headers';
